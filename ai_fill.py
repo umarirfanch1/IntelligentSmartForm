@@ -4,7 +4,7 @@ import json
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Generate API (latest working method).
+    Generate AI suggestions for the partnership form using Cohere Generate API.
     """
 
     if api_key is None:
@@ -28,14 +28,14 @@ Context:
 
     try:
         response = co.generate(
-            model="command-xlarge-nightly",  # compatible with trial accounts
+            model="command-xlarge-nightly",  # works for free/trial keys
             prompt=prompt,
             max_tokens=1500
         )
 
         return response.generations[0].text.strip()
 
-    except cohere.error.CohereError as e:
+    except cohere.CohereAPIError as e:  # <- updated error class
         st.error(f"Cohere API error: {e}")
         return "{}"
     except Exception as e:
