@@ -103,7 +103,7 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
             if isinstance(ai_output, dict) and ai_output:
 
                 # -------------------------------
-                # FIXED AI → FORM MAPPING (only change)
+                # FIXED AI → FORM MAPPING
                 # -------------------------------
                 def safe(key):
                     return ai_output.get(key, "")
