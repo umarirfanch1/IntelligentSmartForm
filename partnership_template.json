@@ -1,0 +1,53 @@
+{
+  "company_information": {
+    "title": "Section 1: Company Information",
+    "description": "Please provide your company’s basic information. Fields with placeholders will be auto-filled where possible.",
+    "fields": {
+      "company_name": "Company Name: {company_name}",
+      "company_url": "Company URL: {company_url}",
+      "founding_year": "Founding Year: {founding_year}",
+      "num_employees": "Number of Employees: {num_employees}",
+      "hq_location": "Headquarters Location: {hq_location}"
+    }
+  },
+  "partnership_details": {
+    "title": "Section 2: Partnership Details",
+    "description": "Provide details about the partnership including the partner organization and goals.",
+    "fields": {
+      "partner_name": "Partner Name / Organization: {partner_name}",
+      "partnership_type": "Type of Partnership (Strategic / Financial / Operational / Other): {partnership_type}",
+      "partnership_start_date": "Partnership Start Date: {partnership_start_date}",
+      "partnership_goals": "Partnership Goals / Objectives: {partnership_goals}",
+      "expected_contributions": "Expected Contribution from Each Party: {expected_contributions}"
+    }
+  },
+  "product_service_description": {
+    "title": "Section 3: Product / Service Description",
+    "description": "Describe your company’s products or services. AI can help generate this text.",
+    "fields": {
+      "mission_statement": "Company Mission Statement: {mission_statement}",
+      "product_overview": "Product / Service Overview: {product_overview}",
+      "target_market": "Target Market / Customers: {target_market}",
+      "competitive_advantage": "Competitive Advantage / Unique Selling Points: {competitive_advantage}"
+    }
+  },
+  "legal_financial_information": {
+    "title": "Section 4: Legal & Financial Information",
+    "description": "Provide key financial and legal information relevant to the partnership.",
+    "fields": {
+      "investment_amount": "Investment Amount / Revenue Sharing: {investment_amount}",
+      "contract_duration": "Contract Duration / Terms: {contract_duration}",
+      "legal_clauses": "Key Legal Clauses / Obligations: {legal_clauses}",
+      "risk_liability": "Risk & Liability Notes: {risk_liability}"
+    }
+  },
+  "miscellaneous_notes": {
+    "title": "Section 5: Miscellaneous / Notes",
+    "description": "Any additional notes or contact information.",
+    "fields": {
+      "additional_notes": "Additional Notes / Special Requirements: {additional_notes}",
+      "contact_person": "Contact Person: {contact_person}",
+      "contact_email": "Contact Email / Phone: {contact_email}"
+    }
+  }
+}
