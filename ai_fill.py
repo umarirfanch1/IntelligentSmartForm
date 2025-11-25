@@ -14,11 +14,6 @@ def extract_json(text):
     return {}
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
-    """
-    Generate AI suggestions for the partnership form using Cohere Chat API v2.
-    Returns a dict ready to fill all partnership form fields.
-    """
-
     if api_key is None:
         api_key = st.secrets.get("cohere", {}).get("api_key")
         if not api_key:
@@ -77,14 +72,15 @@ Context:
         response = co.chat(
             model="command-xlarge-nightly",
             messages=[{"role": "user", "content": prompt}],
-            max_output_tokens=1500,
+            max_tokens=1500,  # correct parameter
             temperature=0.3
         )
 
-        ai_output = response.output[0].content[0].text.strip()
-        json_data = extract_json(ai_output)
+        # According to docs: response.message.content is list of dicts
+        ai_message = response.message.content[0].text  
+        json_data = extract_json(ai_message)
 
-        # Ensure all keys exist
+        # Ensure all required keys exist
         required_keys = [
             "company_name", "company_url", "founding_year", "num_employees", "hq_location",
             "partner_name", "partnership_type", "partnership_start_date", "partnership_goals",
@@ -100,4 +96,6 @@ Context:
 
     except Exception as e:
         st.error(f"Error generating AI suggestions: {e}")
+        # For debugging: show the prompt or part of it
+        st.write("Prompt was:", prompt[:500] + " …")
         return {}
