@@ -30,7 +30,7 @@ Context:
         # Correct usage with latest SDK
         response = co.chat(
             model="command-xlarge-nightly",
-            messages=[  # must be plural
+            message=[  # must be plural
                 {"role": "system", "content": "You are an expert in corporate partnerships."},
                 {"role": "user", "content": prompt}
             ],
