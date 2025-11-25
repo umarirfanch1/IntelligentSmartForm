@@ -41,6 +41,9 @@ steps = ["Choose Input Method", "Provide Information", "AI Pre-Fill & Review", "
 current_step_index = st.session_state['current_step']
 current_step = steps[current_step_index]
 
+# ----------------------------
+# Sidebar Step Tracker
+# ----------------------------
 st.sidebar.header("Steps")
 for i, step_name in enumerate(steps):
     st.sidebar.markdown(
@@ -62,23 +65,26 @@ if current_step == "Choose Input Method":
 # ----------------------------
 elif current_step == "Provide Information":
     st.header("Step 2: Provide Information")
-    input_option = st.session_state.get('input_option', "Manual Form Input")
+    input_option = st.session_state.get('input_option')
 
-    if input_option == "Paste Company URL":
-        company_url = st.text_input("Paste Company Website URL")
-        if company_url:
-            st.info("Parsing website content...")
-            st.session_state['company_text'] = parse_website(company_url)
-            st.success(f"Website parsed! {len(st.session_state['company_text'].split())} words extracted.")
+    if not input_option:
+        st.warning("Please select an input method before proceeding.")
+    else:
+        if input_option == "Paste Company URL":
+            company_url = st.text_input("Paste Company Website URL")
+            if company_url:
+                st.info("Parsing website content...")
+                st.session_state['company_text'] = parse_website(company_url)
+                st.success(f"Website parsed! {len(st.session_state['company_text'].split())} words extracted.")
 
-    elif input_option == "Upload Supporting Documents":
-        uploaded_files = st.file_uploader("Upload PDFs or Word Docs", type=["pdf", "docx"], accept_multiple_files=True)
-        if uploaded_files:
-            st.session_state['uploaded_text'] = parse_uploaded_docs(uploaded_files)
-            st.success(f"{len(uploaded_files)} file(s) parsed! {len(st.session_state['uploaded_text'].split())} words extracted.")
+        elif input_option == "Upload Supporting Documents":
+            uploaded_files = st.file_uploader("Upload PDFs or Word Docs", type=["pdf", "docx"], accept_multiple_files=True)
+            if uploaded_files:
+                st.session_state['uploaded_text'] = parse_uploaded_docs(uploaded_files)
+                st.success(f"{len(uploaded_files)} file(s) parsed! {len(st.session_state['uploaded_text'].split())} words extracted.")
 
-    elif input_option == "Manual Form Input":
-        st.info("You will fill the partnership form manually in the next step.")
+        elif input_option == "Manual Form Input":
+            st.info("You will fill the partnership form manually in the next step.")
 
 # ----------------------------
 # Step 3 & 4: AI Pre-Fill & Review Form
@@ -87,20 +93,24 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
 
     if st.button("Auto-Fill Form with AI"):
-        with st.spinner("Generating AI suggestions..."):
-            ai_output = fill_form_with_ai(
-                company_info_text=st.session_state['company_text'],
-                uploaded_docs_text=st.session_state['uploaded_text'],
-                manual_input=st.session_state['manual_input']
-            )
-            import ast
-            try:
-                st.session_state['form_data'] = ast.literal_eval(ai_output) if isinstance(ai_output, str) else ai_output
-            except:
-                st.warning("AI output could not be parsed, please check manually.")
-        st.success("AI has generated initial suggestions!")
+        if not any([st.session_state['company_text'], st.session_state['uploaded_text'], st.session_state['manual_input']]):
+            st.warning("Provide some input or upload documents before AI pre-fill.")
+        else:
+            with st.spinner("Generating AI suggestions..."):
+                ai_output = fill_form_with_ai(
+                    company_info_text=st.session_state['company_text'],
+                    uploaded_docs_text=st.session_state['uploaded_text'],
+                    manual_input=st.session_state['manual_input'],
+                    api_key=st.secrets["cohere"]["api_key"]  # Using secret
+                )
+                import ast
+                try:
+                    st.session_state['form_data'] = ast.literal_eval(ai_output) if isinstance(ai_output, str) else ai_output
+                except:
+                    st.warning("AI output could not be parsed, please check manually.")
+            st.success("AI has generated initial suggestions!")
 
-    # Show editable form
+    # Editable form
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
@@ -168,5 +178,19 @@ with col1:
         st.experimental_rerun()
 with col2:
     if st.button("Next") and current_step_index < len(steps)-1:
-        st.session_state['current_step'] += 1
-        st.experimental_rerun()
+        # Validation for required input
+        if current_step == "Choose Input Method" and not st.session_state['input_option']:
+            st.warning("Please select an input method before proceeding.")
+        elif current_step == "Provide Information":
+            input_option = st.session_state['input_option']
+            if input_option == "Paste Company URL" and not st.session_state['company_text']:
+                st.warning("Please provide a valid company URL and parse it.")
+            elif input_option == "Upload Supporting Documents" and not st.session_state['uploaded_text']:
+                st.warning("Please upload and parse at least one document.")
+            # Manual form input is allowed without pre-fill
+            else:
+                st.session_state['current_step'] += 1
+                st.experimental_rerun()
+        else:
+            st.session_state['current_step'] += 1
+            st.experimental_rerun()
