@@ -3,18 +3,16 @@ import json
 import requests
 import streamlit as st
 
-def fill_form_with_ai(input_text):
+def fill_form_with_ai(combined_text):
     """
-    input_text: string from either parsed website or uploaded documents
+    combined_text: str -> Combined parsed text from URL or uploaded files
+    Returns: dict -> JSON of AI-suggested form data
     """
     api_key = st.secrets.get("GROQ", {}).get("api_key")
     if not api_key:
         raise ValueError("Groq API key missing under [GROQ] in secrets.toml")
 
-    if not input_text.strip():
-        return {}
-
-    # JSON template for AI to fill
+    # Template JSON structure
     json_template = {
         "company_name": "",
         "company_url": "",
@@ -39,14 +37,13 @@ def fill_form_with_ai(input_text):
         "contact_email": ""
     }
 
-    # Prepare Groq payload
     payload = {
         "model": "llama-3.3-70b-versatile",
         "response_format": {"type": "json_object"},
         "messages": [
             {
                 "role": "system",
-                "content": "You are an expert in corporate partnerships. Return only valid JSON matching the template exactly."
+                "content": "You are an expert in corporate partnerships. Return only valid JSON."
             },
             {
                 "role": "user",
@@ -63,7 +60,7 @@ Rules:
 - Return ONLY clean JSON.
 
 Context:
-{input_text}
+{combined_text}
 """
             }
         ],
@@ -84,8 +81,8 @@ Context:
         return {}
 
     try:
-        ai_content = response.json()["choices"][0]["message"]["content"]
-        return json.loads(ai_content)
+        out = response.json()["choices"][0]["message"]["content"]
+        return json.loads(out)
     except Exception as e:
         st.warning(f"AI returned invalid JSON: {e}")
         st.code(response.json(), language="json")
