@@ -3,22 +3,18 @@ import json
 import requests
 import streamlit as st
 
-def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}):
+def fill_form_with_ai(input_text):
+    """
+    input_text: string from either parsed website or uploaded documents
+    """
     api_key = st.secrets.get("GROQ", {}).get("api_key")
     if not api_key:
         raise ValueError("Groq API key missing under [GROQ] in secrets.toml")
 
-    context = f"""
-Company Info:
-{company_info_text}
+    if not input_text.strip():
+        return {}
 
-Uploaded Documents:
-{uploaded_docs_text}
-
-Manual Input:
-{manual_input}
-"""
-
+    # JSON template for AI to fill
     json_template = {
         "company_name": "",
         "company_url": "",
@@ -43,13 +39,14 @@ Manual Input:
         "contact_email": ""
     }
 
+    # Prepare Groq payload
     payload = {
-        "model": "llama-3.3-70b-versatile",       # ✔ NEW WORKING MODEL
+        "model": "llama-3.3-70b-versatile",
         "response_format": {"type": "json_object"},
         "messages": [
             {
                 "role": "system",
-                "content": "You are an expert in corporate partnerships. Return only valid JSON."
+                "content": "You are an expert in corporate partnerships. Return only valid JSON matching the template exactly."
             },
             {
                 "role": "user",
@@ -66,7 +63,7 @@ Rules:
 - Return ONLY clean JSON.
 
 Context:
-{context}
+{input_text}
 """
             }
         ],
@@ -87,8 +84,8 @@ Context:
         return {}
 
     try:
-        out = response.json()["choices"][0]["message"]["content"]
-        return json.loads(out)
+        ai_content = response.json()["choices"][0]["message"]["content"]
+        return json.loads(ai_content)
     except Exception as e:
         st.warning(f"AI returned invalid JSON: {e}")
         st.code(response.json(), language="json")
