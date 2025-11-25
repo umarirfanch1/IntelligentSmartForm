@@ -8,3 +8,4 @@ lxml==4.9.3                # Required by BeautifulSoup parser
 PyPDF2==3.0.1              # For reading PDF files
 pdfkit==1.0.0              # If generating PDFs via html->pdf
 jinja2==3.1.2              # For PDF templates
+pip install --upgrade openai
