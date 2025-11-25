@@ -27,17 +27,15 @@ Context:
 """
 
     try:
+        # Using trial-compatible model
         response = co.generate(
-            model="command-xlarge-nightly",  # works for free/trial keys
+            model="command-xlarge-nightly",
             prompt=prompt,
             max_tokens=1500
         )
 
         return response.generations[0].text.strip()
 
-    except cohere.CohereAPIError as e:  # <- updated error class
-        st.error(f"Cohere API error: {e}")
-        return "{}"
     except Exception as e:
         st.error(f"Unexpected error in AI fill: {e}")
         return "{}"
