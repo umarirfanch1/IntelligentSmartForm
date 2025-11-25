@@ -1,10 +1,22 @@
 import cohere
 import streamlit as st
 import json
+import re
+
+def extract_json(text):
+    """Extract first JSON object from AI output."""
+    try:
+        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if match:
+            return json.loads(match.group())
+    except json.JSONDecodeError:
+        pass
+    return {}
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API.
+    Generate AI suggestions for the partnership form using Cohere Chat API (latest SDK).
+    Returns a dict ready to fill the form.
     """
 
     if api_key is None:
@@ -15,7 +27,7 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
     co = cohere.Client(api_key)
 
     # Combine all context
-    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{json.dumps(manual_input)}"
+    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{manual_input}"
 
     # Updated Prompt for AI
     prompt = f"""
@@ -44,16 +56,18 @@ Context:
 """
 
     try:
-        # Using Chat API instead of Generate API
+        # Correct Chat API usage
         response = co.chat(
+            model="command-xlarge-nightly",  # Cohere Chat model
             message=prompt,
-            model="command-xlarge-nightly",  # Use the appropriate Chat model
-            temperature=0.7,  # Adjust as needed
-            max_tokens=1500
+            max_tokens=1500,
+            temperature=0.7
         )
 
-        return response.text.strip()
+        # Extract only JSON from AI output
+        output_text = response.text.strip()
+        return extract_json(output_text)
 
     except Exception as e:
         st.error(f"Unexpected error in AI fill: {e}")
-        return "{}"
+        return {}
