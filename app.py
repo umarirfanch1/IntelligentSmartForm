@@ -71,18 +71,24 @@ elif current_step == "Provide Information":
         st.warning("Please select an input method before proceeding.")
     else:
         if input_option == "Paste Company URL":
-            company_url = st.text_input("Paste Company Website URL")
+            company_url = st.text_input("Paste Company Website URL", key="company_url_input")
             if company_url:
-                st.info("Parsing website content...")
-                st.session_state['company_text'] = parse_website(company_url)
-                st.success(f"Website parsed! {len(st.session_state['company_text'].split())} words extracted.")
+                if 'company_parsed' not in st.session_state or not st.session_state['company_parsed']:
+                    with st.spinner("Parsing website content..."):
+                        st.session_state['company_text'] = parse_website(company_url)
+                        st.session_state['company_parsed'] = True
+                        st.success(f"Website parsed! {len(st.session_state['company_text'].split())} words extracted.")
 
         elif input_option == "Upload Supporting Documents":
-            uploaded_files = st.file_uploader("Upload PDFs or Word Docs", type=["pdf", "docx"], accept_multiple_files=True)
+            uploaded_files = st.file_uploader(
+                "Upload PDFs or Word Docs", type=["pdf", "docx"], accept_multiple_files=True, key="uploaded_files_input"
+            )
             if uploaded_files:
-                st.session_state['uploaded_text'] = parse_uploaded_docs(uploaded_files)
-                st.success(f"{len(uploaded_files)} file(s) parsed! {len(st.session_state['uploaded_text'].split())} words extracted.")
-
+                if 'docs_parsed' not in st.session_state or not st.session_state['docs_parsed']:
+                    with st.spinner("Parsing uploaded files..."):
+                        st.session_state['uploaded_text'] = parse_uploaded_docs(uploaded_files)
+                        st.session_state['docs_parsed'] = True
+                        st.success(f"{len(uploaded_files)} file(s) parsed! {len(st.session_state['uploaded_text'].split())} words extracted.")
         elif input_option == "Manual Form Input":
             st.info("You will fill the partnership form manually in the next step.")
 
