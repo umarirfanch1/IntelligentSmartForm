@@ -25,16 +25,17 @@ based on the context provided. Return the output strictly in JSON format matchin
     user_message = f"Context:\n{context}"
 
     try:
+        # Use 'messages' instead of 'message'
         response = co.chat(
             model="xlarge",
-            message=[
+            messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_message}
             ],
             max_tokens=1500
         )
         # Cohere Chat returns a list of generations
-        return response.generations[0].text.strip()
+        return response.generations[0].content.strip()
     except cohere.error.CohereError as e:
         st.error(f"Cohere API error: {e}")
         return "{}"
