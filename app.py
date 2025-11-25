@@ -25,7 +25,8 @@ for key, default in {
     'company_text': "",
     'uploaded_text': "",
     'form_data': {},
-    'manual_input': {}
+    'manual_input': {},
+    'ai_filled': False
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -98,61 +99,58 @@ elif current_step == "Provide Information":
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
 
-    if st.button("Auto-Fill Form with AI"):
-        with st.spinner("Generating AI suggestions..."):
-            ai_output = fill_form_with_ai(
-                company_info_text=st.session_state['company_text'],
-                uploaded_docs_text=st.session_state['uploaded_text'],
-                manual_input=st.session_state['manual_input']
-            )
+    if not st.session_state['ai_filled']:
+        if st.button("Auto-Fill Form with AI"):
+            with st.spinner("Generating AI suggestions..."):
+                ai_output = fill_form_with_ai(
+                    company_info_text=st.session_state['company_text'],
+                    uploaded_docs_text=st.session_state['uploaded_text'],
+                    manual_input=st.session_state['manual_input']
+                )
 
-            if isinstance(ai_output, dict) and ai_output:
+                if isinstance(ai_output, dict) and ai_output:
+                    def safe(key):
+                        return ai_output.get(key, "")
 
-                # -------------------------------
-                # COMPLETE AI → FORM MAPPING (all placeholders)
-                # -------------------------------
-                def safe(key):
-                    return ai_output.get(key, "")
-
-                st.session_state['form_data'] = {
-                    "Company Information": {
-                        "company_name": safe("company_name"),
-                        "company_url": safe("company_url"),
-                        "founding_year": safe("founding_year"),
-                        "num_employees": safe("num_employees"),
-                        "hq_location": safe("hq_location")
-                    },
-                    "Partnership Details": {
-                        "partner_name": safe("partner_name"),
-                        "partnership_type": safe("partnership_type"),
-                        "partnership_start_date": safe("partnership_start_date"),
-                        "partnership_goals": safe("partnership_goals"),
-                        "expected_contributions": safe("expected_contributions")
-                    },
-                    "Product / Service Description": {
-                        "mission_statement": safe("mission_statement"),
-                        "product_overview": safe("product_overview"),
-                        "target_market": safe("target_market"),
-                        "competitive_advantage": safe("competitive_advantage")
-                    },
-                    "Legal & Financial Information": {
-                        "investment_amount": safe("investment_amount"),
-                        "contract_duration": safe("contract_duration"),
-                        "legal_clauses": safe("legal_clauses"),
-                        "risk_liability": safe("risk_liability")
-                    },
-                    "Miscellaneous / Notes": {
-                        "additional_notes": safe("additional_notes"),
-                        "contact_person": safe("contact_person"),
-                        "contact_email": safe("contact_email")
+                    st.session_state['form_data'] = {
+                        "Company Information": {
+                            "company_name": safe("company_name"),
+                            "company_url": safe("company_url"),
+                            "founding_year": safe("founding_year"),
+                            "num_employees": safe("num_employees"),
+                            "hq_location": safe("hq_location")
+                        },
+                        "Partnership Details": {
+                            "partner_name": safe("partner_name"),
+                            "partnership_type": safe("partnership_type"),
+                            "partnership_start_date": safe("partnership_start_date"),
+                            "partnership_goals": safe("partnership_goals"),
+                            "expected_contributions": safe("expected_contributions")
+                        },
+                        "Product / Service Description": {
+                            "mission_statement": safe("mission_statement"),
+                            "product_overview": safe("product_overview"),
+                            "target_market": safe("target_market"),
+                            "competitive_advantage": safe("competitive_advantage")
+                        },
+                        "Legal & Financial Information": {
+                            "investment_amount": safe("investment_amount"),
+                            "contract_duration": safe("contract_duration"),
+                            "legal_clauses": safe("legal_clauses"),
+                            "risk_liability": safe("risk_liability")
+                        },
+                        "Miscellaneous / Notes": {
+                            "additional_notes": safe("additional_notes"),
+                            "contact_person": safe("contact_person"),
+                            "contact_email": safe("contact_email")
+                        }
                     }
-                }
 
-                st.success("AI has generated initial suggestions!")
-                st.experimental_rerun()
-
-            else:
-                st.warning("AI output is empty or invalid. Please fill manually.")
+                    st.session_state['ai_filled'] = True
+                    st.success("AI has generated initial suggestions!")
+                    st.experimental_rerun()
+                else:
+                    st.warning("AI output is empty or invalid. Please fill manually.")
 
     # Editable Form UI
     for section_key, section in template.items():
