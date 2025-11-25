@@ -1,0 +1,51 @@
+Section 1: Company Information
+
+Company Name: {company_name}
+
+Company URL: {company_url}
+
+Founding Year: {founding_year}
+
+Number of Employees: {num_employees}
+
+Headquarters Location: {hq_location}
+
+Section 2: Partnership Details
+
+Partner Name / Organization: {partner_name}
+
+Type of Partnership: {partnership_type}
+
+Partnership Start Date: {partnership_start_date}
+
+Partnership Goals / Objectives: {partnership_goals}
+
+Expected Contribution from Each Party: {expected_contributions}
+
+Section 3: Product / Service Description
+
+Company Mission Statement: {mission_statement}
+
+Product / Service Overview: {product_overview}
+
+Target Market / Customers: {target_market}
+
+Competitive Advantage / Unique Selling Points: {competitive_advantage}
+
+Section 4: Legal & Financial Information
+
+Investment Amount / Revenue Sharing: {investment_amount}
+
+Contract Duration / Terms: {contract_duration}
+
+Key Legal Clauses / Obligations: {legal_clauses}
+
+Risk & Liability Notes: {risk_liability}
+
+Section 5: Miscellaneous / Notes
+
+Additional Notes / Special Requirements: {additional_notes}
+
+Contact Person: {contact_person}
+
+Contact Email / Phone: {contact_email}
