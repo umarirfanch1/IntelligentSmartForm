@@ -4,14 +4,10 @@ import requests
 import streamlit as st
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}):
-    """
-    Uses Groq Llama-3.1 with JSON mode for stable and accurate form filling.
-    """
     api_key = st.secrets.get("GROQ", {}).get("api_key")
     if not api_key:
-        raise ValueError("Groq API key is missing. Set it in Streamlit secrets under [GROQ].")
+        raise ValueError("Groq API key missing under [GROQ] in secrets.toml")
 
-    # compact context
     context = f"""
 Company Info:
 {company_info_text}
@@ -23,7 +19,6 @@ Manual Input:
 {manual_input}
 """
 
-    # JSON structure expected
     json_template = {
         "company_name": "",
         "company_url": "",
@@ -49,40 +44,41 @@ Manual Input:
     }
 
     payload = {
-        "model": "llama-3.1-70b-versatile",  # BEST for structured extraction
-        "response_format": {"type": "json_object"},   # <<< THE FIX
+        "model": "llama-3.3-70b-versatile",       # ✔ NEW WORKING MODEL
+        "response_format": {"type": "json_object"},
         "messages": [
             {
                 "role": "system",
-                "content": "You are an expert in corporate partnerships. Return STRICT JSON only."
+                "content": "You are an expert in corporate partnerships. Return only valid JSON."
             },
             {
                 "role": "user",
                 "content": f"""
-Fill the following JSON template using the provided context.
+Fill this JSON with details inferred from the context below.
 
 Template:
 {json.dumps(json_template, indent=4)}
 
 Rules:
-- Only fill values that can be inferred.
-- Unknown fields must remain "".
-- DO NOT add new keys.
-- DO NOT add explanations.
-- Return ONLY raw JSON.
+- Only fill what is explicitly present or safely inferred.
+- Unknown values must remain empty strings.
+- Do NOT add keys.
+- Return ONLY clean JSON.
 
 Context:
 {context}
 """
             }
         ],
-        "temperature": 0,
-        "max_tokens": 2000
+        "temperature": 0
     }
 
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
         json=payload
     )
 
@@ -91,9 +87,9 @@ Context:
         return {}
 
     try:
-        content = response.json()["choices"][0]["message"]["content"]
-        return json.loads(content)
+        out = response.json()["choices"][0]["message"]["content"]
+        return json.loads(out)
     except Exception as e:
-        st.warning(f"AI returned invalid JSON ({e}).")
-        st.json(response.json())  # debugging
+        st.warning(f"AI returned invalid JSON: {e}")
+        st.code(response.json(), language="json")
         return {}
