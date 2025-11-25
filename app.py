@@ -99,40 +99,56 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                 uploaded_docs_text=st.session_state['uploaded_text'],
                 manual_input=st.session_state['manual_input']
             )
-            
-            # AI output is already a dict
+
             if isinstance(ai_output, dict) and ai_output:
-                # Map AI output keys to template sections
-                # Example: assuming your template sections match AI keys
+
+                # -------------------------------
+                # FIXED AI → FORM MAPPING (only change)
+                # -------------------------------
+                def safe(key):
+                    return ai_output.get(key, "")
+
                 st.session_state['form_data'] = {
                     "Company Information": {
-                        "company_name": ai_output.get("company_name", ""),
-                        "contact_name": ai_output.get("contact_name", ""),
-                        "contact_email": ai_output.get("contact_email", ""),
-                        "contact_phone": ai_output.get("contact_phone", "")
+                        "company_name": safe("company_name"),
+                        "company_url": safe("company_url"),
+                        "founding_year": safe("founding_year"),
+                        "num_employees": safe("num_employees"),
+                        "hq_location": safe("hq_location")
                     },
                     "Partnership Details": {
-                        "partnership_type": ai_output.get("partnership_type", "")
+                        "partner_name": safe("partner_name"),
+                        "partnership_type": safe("partnership_type"),
+                        "partnership_start_date": safe("partnership_start_date"),
+                        "partnership_goals": safe("partnership_goals"),
+                        "expected_contributions": safe("expected_contributions")
                     },
-                    "Products & Services": {
-                        "products_services": "\n".join(ai_output.get("products_services", [])),
-                        "promotions": "\n".join(ai_output.get("promotions", []))
+                    "Product / Service Description": {
+                        "mission_statement": safe("mission_statement"),
+                        "product_overview": safe("product_overview"),
+                        "target_market": safe("target_market"),
+                        "competitive_advantage": safe("competitive_advantage")
                     },
-                    "Trade-In Program": {
-                        "name": ai_output.get("trade_in_program", {}).get("name", ""),
-                        "description": ai_output.get("trade_in_program", {}).get("description", ""),
-                        "terms_conditions": ai_output.get("trade_in_program", {}).get("terms_conditions", "")
+                    "Legal & Financial Information": {
+                        "investment_amount": safe("investment_amount"),
+                        "contract_duration": safe("contract_duration"),
+                        "legal_clauses": safe("legal_clauses"),
+                        "risk_liability": safe("risk_liability")
                     },
-                    "Additional Notes": {
-                        "additional_notes": ai_output.get("additional_notes", "")
+                    "Miscellaneous / Notes": {
+                        "additional_notes": safe("additional_notes"),
+                        "contact_person": safe("contact_person"),
+                        "contact_email": safe("contact_email")
                     }
                 }
+
                 st.success("AI has generated initial suggestions!")
+                st.experimental_rerun()
 
             else:
                 st.warning("AI output is empty or invalid. Please fill manually.")
 
-    # Show editable form
+    # Editable Form UI
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
@@ -145,6 +161,7 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                     height=60,
                     key=f"{section_key}_{field_key}"
                 )
+
 # ----------------------------
 # Step 5: Preview PDF & Send
 # ----------------------------
@@ -199,7 +216,6 @@ with col1:
         st.experimental_rerun()
 with col2:
     if st.button("Next") and current_step_index < len(steps)-1:
-        # Validation for required input
         if current_step == "Choose Input Method" and not st.session_state['input_option']:
             st.warning("Please select an input method before proceeding.")
         elif current_step == "Provide Information":
@@ -208,7 +224,6 @@ with col2:
                 st.warning("Please provide a valid company URL and parse it.")
             elif input_option == "Upload Supporting Documents" and not st.session_state['uploaded_text']:
                 st.warning("Please upload and parse at least one document.")
-            # Manual form input is allowed without pre-fill
             else:
                 st.session_state['current_step'] += 1
                 st.experimental_rerun()
