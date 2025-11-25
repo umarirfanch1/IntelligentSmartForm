@@ -102,7 +102,6 @@ elif current_step == "Provide Information":
 # ----------------------------
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
-
     input_option = st.session_state.get('input_option')
 
     # Only show AI Fill option for URL or PDF input
@@ -112,18 +111,15 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                 with st.spinner("Generating AI suggestions using Groq..."):
                     try:
                         combined_text = ""
-                        if input_option == "Paste Company URL" and st.session_state.get('company_text'):
-                            combined_text = st.session_state['company_text']
-                        elif input_option == "Upload Supporting Documents" and st.session_state.get('uploaded_text'):
-                            combined_text = st.session_state['uploaded_text']
+                        if input_option == "Paste Company URL":
+                            combined_text += st.session_state.get('company_text', '')
+                        if input_option == "Upload Supporting Documents":
+                            combined_text += "\n" + st.session_state.get('uploaded_text', '')
 
                         if not combined_text.strip():
                             st.warning("No content available from your input for AI to process.")
                         else:
-                            ai_output = fill_form_with_ai(
-                                company_info_text=combined_text,
-                                manual_input={}  # manual details not needed for AI
-                            )
+                            ai_output = fill_form_with_ai(combined_text)
 
                             if isinstance(ai_output, dict) and ai_output:
                                 def safe(key):
@@ -187,6 +183,7 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                     height=60,
                     key=f"{section_key}_{field_key}"
                 )
+
 # ----------------------------
 # Step 5: Preview PDF & Send
 # ----------------------------
