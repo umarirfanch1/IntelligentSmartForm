@@ -91,7 +91,7 @@ elif current_step == "Provide Information":
 # ----------------------------
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
-   if st.button("Auto-Fill Form with AI"):
+  if st.button("Auto-Fill Form with AI"):
     if not any([st.session_state['company_text'], st.session_state['uploaded_text'], st.session_state['manual_input']]):
         st.warning("Provide some input or upload documents before AI pre-fill.")
     else:
@@ -102,8 +102,6 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                 manual_input=st.session_state['manual_input'],
                 api_key=st.secrets["cohere"]["api_key"]  # Using secret
             )
-            
-            # --- FIX START ---
             if not ai_output:
                 st.error("AI returned empty output. Please check input or try again.")
             else:
