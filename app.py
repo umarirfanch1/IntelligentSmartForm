@@ -91,35 +91,48 @@ elif current_step == "Provide Information":
 # ----------------------------
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
+
     if st.button("Auto-Fill Form with AI"):
-        if not any([st.session_state['company_text'], st.session_state['uploaded_text'], st.session_state['manual_input']]):
-            st.warning("Provide some input or upload documents before AI pre-fill.")
-        else:
-            with st.spinner("Generating AI suggestions..."):
-                ai_output = fill_form_with_ai(
-                    company_info_text=st.session_state['company_text'],
-                    uploaded_docs_text=st.session_state['uploaded_text'],
-                    manual_input=st.session_state['manual_input'],
-                    api_key=st.secrets["cohere"]["api_key"]  # Using secret
-                )
-                if not ai_output:
-                    st.error("AI returned empty output. Please check input or try again.")
-                else:
-                    try:
-                        # Attempt to parse AI output as JSON
-                        if isinstance(ai_output, str):
-                            ai_output_str = ai_output.strip()
-                            if not ai_output_str:
-                                raise ValueError("Empty string returned from AI.")
-                            st.session_state['form_data'] = json.loads(ai_output_str)
-                        else:
-                            st.session_state['form_data'] = ai_output
-                        st.success("AI has generated initial suggestions!")
-                    except (json.JSONDecodeError, ValueError) as e:
-                        st.error("AI output could not be parsed. Please check manually. Ensure the output is valid JSON.")
-                        st.error(f"Error details: {e}")
-                        st.code(ai_output, language="json")
-    # Editable form
+        with st.spinner("Generating AI suggestions..."):
+            ai_output = fill_form_with_ai(
+                company_info_text=st.session_state['company_text'],
+                uploaded_docs_text=st.session_state['uploaded_text'],
+                manual_input=st.session_state['manual_input']
+            )
+            
+            # AI output is already a dict
+            if isinstance(ai_output, dict) and ai_output:
+                # Map AI output keys to template sections
+                # Example: assuming your template sections match AI keys
+                st.session_state['form_data'] = {
+                    "Company Information": {
+                        "company_name": ai_output.get("company_name", ""),
+                        "contact_name": ai_output.get("contact_name", ""),
+                        "contact_email": ai_output.get("contact_email", ""),
+                        "contact_phone": ai_output.get("contact_phone", "")
+                    },
+                    "Partnership Details": {
+                        "partnership_type": ai_output.get("partnership_type", "")
+                    },
+                    "Products & Services": {
+                        "products_services": "\n".join(ai_output.get("products_services", [])),
+                        "promotions": "\n".join(ai_output.get("promotions", []))
+                    },
+                    "Trade-In Program": {
+                        "name": ai_output.get("trade_in_program", {}).get("name", ""),
+                        "description": ai_output.get("trade_in_program", {}).get("description", ""),
+                        "terms_conditions": ai_output.get("trade_in_program", {}).get("terms_conditions", "")
+                    },
+                    "Additional Notes": {
+                        "additional_notes": ai_output.get("additional_notes", "")
+                    }
+                }
+                st.success("AI has generated initial suggestions!")
+
+            else:
+                st.warning("AI output is empty or invalid. Please fill manually.")
+
+    # Show editable form
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
