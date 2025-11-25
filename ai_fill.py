@@ -3,16 +3,18 @@ import json
 import requests
 import streamlit as st
 
-def fill_form_with_ai(combined_text):
+def fill_form_with_ai(combined_text: str) -> dict:
     """
-    combined_text: str -> Combined parsed text from URL or uploaded files
-    Returns: dict -> JSON of AI-suggested form data
+    Send combined text to Groq API and return structured JSON for the form.
+    Args:
+        combined_text (str): Parsed content from URL or uploaded files.
+    Returns:
+        dict: AI-generated form data
     """
     api_key = st.secrets.get("GROQ", {}).get("api_key")
     if not api_key:
         raise ValueError("Groq API key missing under [GROQ] in secrets.toml")
 
-    # Template JSON structure
     json_template = {
         "company_name": "",
         "company_url": "",
@@ -43,21 +45,16 @@ def fill_form_with_ai(combined_text):
         "messages": [
             {
                 "role": "system",
-                "content": "You are an expert in corporate partnerships. Return only valid JSON."
+                "content": "You are an expert in corporate partnerships. Return ONLY valid JSON."
             },
             {
                 "role": "user",
                 "content": f"""
-Fill this JSON with details inferred from the context below.
+Fill the following JSON template using ONLY the information explicitly present or safely inferred
+from the context below. Do NOT invent data. Keep unknown values empty.
 
 Template:
 {json.dumps(json_template, indent=4)}
-
-Rules:
-- Only fill what is explicitly present or safely inferred.
-- Unknown values must remain empty strings.
-- Do NOT add keys.
-- Return ONLY clean JSON.
 
 Context:
 {combined_text}
@@ -67,23 +64,19 @@ Context:
         "temperature": 0
     }
 
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        },
-        json=payload
-    )
-
-    if response.status_code != 200:
-        st.error(f"Groq API Error {response.status_code} — {response.text}")
-        return {}
-
     try:
-        out = response.json()["choices"][0]["message"]["content"]
-        return json.loads(out)
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json=payload
+        )
+        resp.raise_for_status()
+
+        content = resp.json()["choices"][0]["message"]["content"]
+        return json.loads(content)
     except Exception as e:
-        st.warning(f"AI returned invalid JSON: {e}")
-        st.code(response.json(), language="json")
+        st.error(f"Groq API call failed: {e}")
         return {}
