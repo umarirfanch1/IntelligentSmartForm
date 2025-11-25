@@ -1,18 +1,27 @@
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "utils"))
-# ----------------------------
-# Ensure current directory is in Python path
-# ----------------------------
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import importlib.util
 
-import streamlit as st
-import requests
-import json
-import base64
-from utils.parser import parse_website, parse_uploaded_docs
-from utils.ai_fill import fill_form_with_ai
-from utils.pdf_generator import generate_pdf_from_form
+utils_path = os.path.join(os.path.dirname(__file__), "utils")
+
+# Parser
+spec = importlib.util.spec_from_file_location("parser", os.path.join(utils_path, "parser.py"))
+parser = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(parser)
+parse_website = parser.parse_website
+parse_uploaded_docs = parser.parse_uploaded_docs
+
+# AI Fill
+spec = importlib.util.spec_from_file_location("ai_fill", os.path.join(utils_path, "ai_fill.py"))
+ai_fill_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ai_fill_module)
+fill_form_with_ai = ai_fill_module.fill_form_with_ai
+
+# PDF Generator
+spec = importlib.util.spec_from_file_location("pdf_generator", os.path.join(utils_path, "pdf_generator.py"))
+pdf_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pdf_module)
+generate_pdf_from_form = pdf_module.generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 
