@@ -1,10 +1,10 @@
 python-docx==0.8.11        # For parsing Word documents
 sendgrid==6.12.5           # For sending emails
 streamlit==1.27.0          # For the Streamlit app
-cohere>=4.0.0            # For AI form filling
+openai>=0.27.0             # For AI form filling
 requests==2.31.0           # For HTTP requests
 beautifulsoup4==4.12.2     # For parsing HTML
-lxml==4.9.3                 # Required by BeautifulSoup parser
+lxml==4.9.3                # Required by BeautifulSoup parser
 PyPDF2==3.0.1              # For reading PDF files
 pdfkit==1.0.0              # If generating PDFs via html->pdf
 jinja2==3.1.2              # For PDF templates
