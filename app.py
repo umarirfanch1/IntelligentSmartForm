@@ -103,25 +103,26 @@ elif current_step == "Provide Information":
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
 
-    # Only show AI Fill option for URL and PDF, NOT manual
-    if st.session_state['input_option'] != "Manual Form Input":
+    input_option = st.session_state.get('input_option')
+
+    # Only show AI Fill option for URL or PDF input
+    if input_option in ["Paste Company URL", "Upload Supporting Documents"]:
         if not st.session_state['ai_filled']:
             if st.button("Auto-Fill Form with AI"):
                 with st.spinner("Generating AI suggestions using Groq..."):
                     try:
-                        # Combine URL and PDF text
                         combined_text = ""
-                        if st.session_state.get('company_text'):
-                            combined_text += st.session_state['company_text'] + "\n"
-                        if st.session_state.get('uploaded_text'):
-                            combined_text += st.session_state['uploaded_text']
+                        if input_option == "Paste Company URL" and st.session_state.get('company_text'):
+                            combined_text = st.session_state['company_text']
+                        elif input_option == "Upload Supporting Documents" and st.session_state.get('uploaded_text'):
+                            combined_text = st.session_state['uploaded_text']
 
                         if not combined_text.strip():
-                            st.warning("No content available from URL or uploaded documents for AI to process.")
+                            st.warning("No content available from your input for AI to process.")
                         else:
                             ai_output = fill_form_with_ai(
                                 company_info_text=combined_text,
-                                manual_input=st.session_state['manual_input']
+                                manual_input={}  # manual details not needed for AI
                             )
 
                             if isinstance(ai_output, dict) and ai_output:
@@ -167,9 +168,11 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                                 st.experimental_rerun()
                             else:
                                 st.warning("AI output is empty or invalid. Please fill manually.")
-
                     except Exception as e:
                         st.error(f"Groq API error: {e}")
+
+    elif input_option == "Manual Form Input":
+        st.info("You selected manual input. AI auto-fill is skipped.")
 
     # Editable Form UI
     for section_key, section in template.items():
@@ -184,7 +187,6 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                     height=60,
                     key=f"{section_key}_{field_key}"
                 )
-
 # ----------------------------
 # Step 5: Preview PDF & Send
 # ----------------------------
