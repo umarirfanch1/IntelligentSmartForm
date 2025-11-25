@@ -29,7 +29,7 @@ Context:
     try:
         # Use 'message' instead of 'messages'
         response = co.chat(
-            model="xlarge",
+            model="command-xlarge-nightly",
             message=prompt,
             max_tokens=1500
         )
