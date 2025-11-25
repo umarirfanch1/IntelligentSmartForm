@@ -15,8 +15,8 @@ def extract_json(text):
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API.
-    Returns a dict ready to fill the partnership form fields.
+    Generate AI suggestions for the partnership form using Cohere Chat API v2.
+    Returns a dict ready to fill all partnership form fields.
     """
 
     if api_key is None:
@@ -24,9 +24,8 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
         if not api_key:
             raise ValueError("Cohere API key is missing in Streamlit secrets.")
 
-    co = cohere.Client(api_key)
+    co = cohere.ClientV2(api_key)
 
-    # Combine context
     context = (
         f"Company Info:\n{company_info_text}\n\n"
         f"Documents:\n{uploaded_docs_text}\n\n"
@@ -75,15 +74,14 @@ Context:
 """
 
     try:
-        # Use the older SDK style: single message parameter
         response = co.chat(
             model="command-xlarge-nightly",
-            message=prompt,
-            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}],
+            max_output_tokens=1500,
             temperature=0.3
         )
 
-        ai_output = response.text.strip()
+        ai_output = response.output[0].content[0].text.strip()
         json_data = extract_json(ai_output)
 
         # Ensure all keys exist
@@ -94,7 +92,6 @@ Context:
             "competitive_advantage", "investment_amount", "contract_duration", "legal_clauses",
             "risk_liability", "additional_notes", "contact_person", "contact_email"
         ]
-
         for key in required_keys:
             if key not in json_data:
                 json_data[key] = ""
