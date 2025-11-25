@@ -4,7 +4,7 @@ import json
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Generate API.
+    Generate AI suggestions for the partnership form using Cohere Chat API.
     """
 
     if api_key is None:
