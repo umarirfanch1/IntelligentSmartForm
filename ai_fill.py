@@ -26,14 +26,13 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
 
     co = cohere.Client(api_key)
 
-    # Combine all context
+    # Combine context
     context = (
         f"Company Info:\n{company_info_text}\n\n"
         f"Documents:\n{uploaded_docs_text}\n\n"
         f"Manual Input:\n{manual_input}"
     )
 
-    # Prompt with all placeholders
     prompt = f"""
 You are an expert in corporate partnerships. Based on the provided context,
 fill the fields of the partnership form with the most relevant information.
@@ -76,18 +75,18 @@ Context:
 """
 
     try:
-        # Correct chat call using messages
+        # Use the older SDK style: single message parameter
         response = co.chat(
             model="command-xlarge-nightly",
-            messages=[{"role": "user", "content": prompt}],
+            message=prompt,
             max_tokens=1500,
             temperature=0.3
         )
 
-        ai_output = response.output_text.strip()
+        ai_output = response.text.strip()
         json_data = extract_json(ai_output)
 
-        # Ensure all keys exist (fill missing ones with empty string)
+        # Ensure all keys exist
         required_keys = [
             "company_name", "company_url", "founding_year", "num_employees", "hq_location",
             "partner_name", "partnership_type", "partnership_start_date", "partnership_goals",
