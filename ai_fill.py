@@ -4,7 +4,7 @@ import json
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API (v4+).
+    Generate AI suggestions for the partnership form using Cohere Chat API (latest SDK).
     """
 
     if api_key is None:
@@ -17,24 +17,25 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
     # Combine all context
     context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{manual_input}"
 
-    system_message = """
+    # Prompt for AI
+    prompt = f"""
 You are an expert in corporate partnerships. Your task is to fill the partnership form 
 based on the context provided. Return the output strictly in JSON format matching the template placeholders.
+
+Context:
+{context}
 """
 
-    user_message = f"Context:\n{context}"
-
     try:
+        # Use 'message' instead of 'messages'
         response = co.chat(
             model="xlarge",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message}
-            ],
+            message=prompt,
             max_tokens=1500
         )
+        # For latest SDK, output is in 'response.output_text'
         return response.output_text.strip()
 
-    except Exception as e:  # Catch all exceptions (Cohere v4+ unified error handling)
+    except Exception as e:
         st.error(f"Unexpected error in AI fill: {e}")
         return "{}"
