@@ -3,7 +3,7 @@ import json
 import os
 import base64
 from company_parser import parse_website, parse_uploaded_docs
-from ai_fill import fill_form_with_ai
+from ai_fill import fill_form_with_ai  # Make sure ai_fill.py uses Groq API
 from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
@@ -101,7 +101,7 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
 
     if not st.session_state['ai_filled']:
         if st.button("Auto-Fill Form with AI"):
-            with st.spinner("Generating AI suggestions..."):
+            with st.spinner("Generating AI suggestions with Groq API..."):
                 ai_output = fill_form_with_ai(
                     company_info_text=st.session_state['company_text'],
                     uploaded_docs_text=st.session_state['uploaded_text'],
