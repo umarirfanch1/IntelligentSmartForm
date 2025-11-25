@@ -8,13 +8,16 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
     Uses Groq API to generate pre-filled partnership form suggestions.
     """
 
+    # Retrieve API key from Streamlit secrets if not provided
     if api_key is None:
-        api_key = st.secrets.get("GroqAPI", {}).get("api_key")
+        api_key = st.secrets.get("GROQ", {}).get("api_key")
         if not api_key:
-            raise ValueError("Groq API key is missing. Set it in Streamlit secrets.")
+            raise ValueError("Groq API key is missing. Set it in Streamlit secrets under [GROQ].")
 
+    # Combine all context
     context = f"Company Info:\n{company_info_text}\nDocuments:\n{uploaded_docs_text}\nManual Input:\n{manual_input}"
 
+    # Prompt for Groq model
     prompt = f"""
 You are an expert in corporate partnerships. Fill the partnership form in JSON format exactly with these keys:
 
@@ -50,20 +53,23 @@ Context:
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
+        "model": "groq-1",               # Make sure to use the correct Groq model
         "prompt": prompt,
         "max_output_tokens": 1500,
         "temperature": 0.3
     }
 
-    response = requests.post("https://api.groq.com/v1/generate", headers=headers, json=payload)
-    
-    if response.status_code != 200:
-        st.error(f"Groq API Error: {response.status_code} {response.text}")
+    try:
+        # Correct Groq endpoint
+        response = requests.post("https://api.groq.com/v1/text-generation", headers=headers, json=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Groq API Error: {e}")
         return {}
 
     try:
         ai_text = response.json().get("text", "")
         return json.loads(ai_text)
-    except Exception:
-        st.warning("AI output is empty or invalid. Please fill manually.")
+    except Exception as e:
+        st.warning(f"AI output is empty or invalid. Please fill manually. ({e})")
         return {}
