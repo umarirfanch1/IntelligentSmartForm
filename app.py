@@ -91,35 +91,34 @@ elif current_step == "Provide Information":
 # ----------------------------
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
-  if st.button("Auto-Fill Form with AI"):
-    if not any([st.session_state['company_text'], st.session_state['uploaded_text'], st.session_state['manual_input']]):
-        st.warning("Provide some input or upload documents before AI pre-fill.")
-    else:
-        with st.spinner("Generating AI suggestions..."):
-            ai_output = fill_form_with_ai(
-                company_info_text=st.session_state['company_text'],
-                uploaded_docs_text=st.session_state['uploaded_text'],
-                manual_input=st.session_state['manual_input'],
-                api_key=st.secrets["cohere"]["api_key"]  # Using secret
-            )
-            if not ai_output:
-                st.error("AI returned empty output. Please check input or try again.")
-            else:
-                try:
-                    # Attempt to parse AI output as JSON
-                    if isinstance(ai_output, str):
-                        ai_output_str = ai_output.strip()
-                        if not ai_output_str:
-                            raise ValueError("Empty string returned from AI.")
-                        st.session_state['form_data'] = json.loads(ai_output_str)
-                    else:
-                        st.session_state['form_data'] = ai_output
-                    st.success("AI has generated initial suggestions!")
-                except (json.JSONDecodeError, ValueError) as e:
-                    st.error("AI output could not be parsed. Please check manually. Ensure the output is valid JSON.")
-                    st.error(f"Error details: {e}")
-                    st.code(ai_output, language="json")
-            # --- FIX END ---
+    if st.button("Auto-Fill Form with AI"):
+        if not any([st.session_state['company_text'], st.session_state['uploaded_text'], st.session_state['manual_input']]):
+            st.warning("Provide some input or upload documents before AI pre-fill.")
+        else:
+            with st.spinner("Generating AI suggestions..."):
+                ai_output = fill_form_with_ai(
+                    company_info_text=st.session_state['company_text'],
+                    uploaded_docs_text=st.session_state['uploaded_text'],
+                    manual_input=st.session_state['manual_input'],
+                    api_key=st.secrets["cohere"]["api_key"]  # Using secret
+                )
+                if not ai_output:
+                    st.error("AI returned empty output. Please check input or try again.")
+                else:
+                    try:
+                        # Attempt to parse AI output as JSON
+                        if isinstance(ai_output, str):
+                            ai_output_str = ai_output.strip()
+                            if not ai_output_str:
+                                raise ValueError("Empty string returned from AI.")
+                            st.session_state['form_data'] = json.loads(ai_output_str)
+                        else:
+                            st.session_state['form_data'] = ai_output
+                        st.success("AI has generated initial suggestions!")
+                    except (json.JSONDecodeError, ValueError) as e:
+                        st.error("AI output could not be parsed. Please check manually. Ensure the output is valid JSON.")
+                        st.error(f"Error details: {e}")
+                        st.code(ai_output, language="json")
     # Editable form
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
@@ -133,7 +132,6 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                     height=60,
                     key=f"{section_key}_{field_key}"
                 )
-
 # ----------------------------
 # Step 5: Preview PDF & Send
 # ----------------------------
