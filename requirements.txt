@@ -11,3 +11,4 @@ lxml==4.9.3
 PyPDF2==3.0.1
 pdfkit==1.0.0
 jinja2==3.1.2
+pip install --upgrade pip
