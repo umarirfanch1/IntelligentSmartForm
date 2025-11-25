@@ -1,27 +1,11 @@
-import sys
+mport streamlit as st
+import json
 import os
-import importlib.util
+import base64
 
-utils_path = os.path.join(os.path.dirname(__file__), "utils")
-
-# Parser
-spec = importlib.util.spec_from_file_location("parser", os.path.join(utils_path, "parser.py"))
-parser = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(parser)
-parse_website = parser.parse_website
-parse_uploaded_docs = parser.parse_uploaded_docs
-
-# AI Fill
-spec = importlib.util.spec_from_file_location("ai_fill", os.path.join(utils_path, "ai_fill.py"))
-ai_fill_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(ai_fill_module)
-fill_form_with_ai = ai_fill_module.fill_form_with_ai
-
-# PDF Generator
-spec = importlib.util.spec_from_file_location("pdf_generator", os.path.join(utils_path, "pdf_generator.py"))
-pdf_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(pdf_module)
-generate_pdf_from_form = pdf_module.generate_pdf_from_form
+from parser import parse_website, parse_uploaded_docs
+from ai_fill import fill_form_with_ai
+from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 
@@ -36,16 +20,15 @@ st.markdown("---")
 # ----------------------------
 # Initialize session state
 # ----------------------------
-if 'input_option' not in st.session_state:
-    st.session_state['input_option'] = None
-if 'company_text' not in st.session_state:
-    st.session_state['company_text'] = ""
-if 'uploaded_text' not in st.session_state:
-    st.session_state['uploaded_text'] = ""
-if 'form_data' not in st.session_state:
-    st.session_state['form_data'] = {}
-if 'manual_input' not in st.session_state:
-    st.session_state['manual_input'] = {}
+for key, default in {
+    'input_option': None,
+    'company_text': "",
+    'uploaded_text': "",
+    'form_data': {},
+    'manual_input': {}
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # ----------------------------
 # Load Template
