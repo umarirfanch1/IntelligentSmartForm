@@ -1,6 +1,8 @@
 # company_parser.py
 import requests
 from bs4 import BeautifulSoup
+from PyPDF2 import PdfReader
+from docx import Document
 
 def parse_website(url):
     try:
@@ -17,20 +19,28 @@ def parse_website(url):
         return ""
 
 def parse_uploaded_docs(files):
-    """Extract text from uploaded PDF or DOCX files."""
-    import io
-    from PyPDF2 import PdfReader
-    import docx
+    """
+    files: list of uploaded files from Streamlit uploader
+    returns: combined text from PDFs and Word documents
+    """
+    combined_text = []
 
-    all_text = []
     for uploaded_file in files:
-        name = uploaded_file.name.lower()
-        if name.endswith(".pdf"):
-            pdf = PdfReader(io.BytesIO(uploaded_file.read()))
-            text = "\n".join([page.extract_text() or "" for page in pdf.pages])
-            all_text.append(text)
-        elif name.endswith(".docx"):
-            doc = docx.Document(io.BytesIO(uploaded_file.read()))
-            text = "\n".join([p.text for p in doc.paragraphs])
-            all_text.append(text)
-    return "\n".join(all_text)
+        filename = uploaded_file.name.lower()
+        try:
+            if filename.endswith(".pdf"):
+                reader = PdfReader(uploaded_file)
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+                combined_text.append(text)
+            elif filename.endswith(".docx"):
+                doc = Document(uploaded_file)
+                text = "\n".join([p.text for p in doc.paragraphs])
+                combined_text.append(text)
+            else:
+                print(f"Unsupported file type: {filename}")
+        except Exception as e:
+            print(f"Failed to parse {filename}: {e}")
+
+    return "\n\n".join(combined_text)
