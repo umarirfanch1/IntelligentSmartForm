@@ -17,10 +17,27 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
     # Combine all context
     context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{json.dumps(manual_input)}"
 
-    # Prompt for AI
+    # Updated Prompt for AI
     prompt = f"""
 You are an expert in corporate partnerships. Your task is to fill the partnership form 
-based on the context provided. Return the output strictly in JSON format matching the template placeholders.
+based on the context provided. Return the output strictly in JSON format matching the 
+following structure (without any additional root key like "partnership_form"):
+
+{{
+    "company_name": "",
+    "contact_name": "",
+    "contact_email": "",
+    "contact_phone": "",
+    "partnership_type": "",
+    "products_services": [],
+    "promotions": [],
+    "trade_in_program": {{
+        "name": "",
+        "description": "",
+        "terms_conditions": ""
+    }},
+    "additional_notes": ""
+}}
 
 Context:
 {context}
