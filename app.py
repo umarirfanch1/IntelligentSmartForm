@@ -109,55 +109,65 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
             if st.button("Auto-Fill Form with AI"):
                 with st.spinner("Generating AI suggestions using Groq..."):
                     try:
-                        ai_output = fill_form_with_ai(
-                            company_info_text=st.session_state['company_text'],
-                            uploaded_docs_text=st.session_state['uploaded_text'],
-                            manual_input=st.session_state['manual_input']
-                        )
+                        # Combine URL and PDF text
+                        combined_text = ""
+                        if st.session_state.get('company_text'):
+                            combined_text += st.session_state['company_text'] + "\n"
+                        if st.session_state.get('uploaded_text'):
+                            combined_text += st.session_state['uploaded_text']
 
-                        if isinstance(ai_output, dict) and ai_output:
-                            def safe(key):
-                                return ai_output.get(key, "")
-
-                            st.session_state['form_data'] = {
-                                "Company Information": {
-                                    "company_name": safe("company_name"),
-                                    "company_url": safe("company_url"),
-                                    "founding_year": safe("founding_year"),
-                                    "num_employees": safe("num_employees"),
-                                    "hq_location": safe("hq_location")
-                                },
-                                "Partnership Details": {
-                                    "partner_name": safe("partner_name"),
-                                    "partnership_type": safe("partnership_type"),
-                                    "partnership_start_date": safe("partnership_start_date"),
-                                    "partnership_goals": safe("partnership_goals"),
-                                    "expected_contributions": safe("expected_contributions")
-                                },
-                                "Product / Service Description": {
-                                    "mission_statement": safe("mission_statement"),
-                                    "product_overview": safe("product_overview"),
-                                    "target_market": safe("target_market"),
-                                    "competitive_advantage": safe("competitive_advantage")
-                                },
-                                "Legal & Financial Information": {
-                                    "investment_amount": safe("investment_amount"),
-                                    "contract_duration": safe("contract_duration"),
-                                    "legal_clauses": safe("legal_clauses"),
-                                    "risk_liability": safe("risk_liability")
-                                },
-                                "Miscellaneous / Notes": {
-                                    "additional_notes": safe("additional_notes"),
-                                    "contact_person": safe("contact_person"),
-                                    "contact_email": safe("contact_email")
-                                }
-                            }
-
-                            st.session_state['ai_filled'] = True
-                            st.success("AI has generated initial suggestions!")
-                            st.experimental_rerun()
+                        if not combined_text.strip():
+                            st.warning("No content available from URL or uploaded documents for AI to process.")
                         else:
-                            st.warning("AI output is empty or invalid. Please fill manually.")
+                            ai_output = fill_form_with_ai(
+                                company_info_text=combined_text,
+                                manual_input=st.session_state['manual_input']
+                            )
+
+                            if isinstance(ai_output, dict) and ai_output:
+                                def safe(key):
+                                    return ai_output.get(key, "")
+
+                                st.session_state['form_data'] = {
+                                    "Company Information": {
+                                        "company_name": safe("company_name"),
+                                        "company_url": safe("company_url"),
+                                        "founding_year": safe("founding_year"),
+                                        "num_employees": safe("num_employees"),
+                                        "hq_location": safe("hq_location")
+                                    },
+                                    "Partnership Details": {
+                                        "partner_name": safe("partner_name"),
+                                        "partnership_type": safe("partnership_type"),
+                                        "partnership_start_date": safe("partnership_start_date"),
+                                        "partnership_goals": safe("partnership_goals"),
+                                        "expected_contributions": safe("expected_contributions")
+                                    },
+                                    "Product / Service Description": {
+                                        "mission_statement": safe("mission_statement"),
+                                        "product_overview": safe("product_overview"),
+                                        "target_market": safe("target_market"),
+                                        "competitive_advantage": safe("competitive_advantage")
+                                    },
+                                    "Legal & Financial Information": {
+                                        "investment_amount": safe("investment_amount"),
+                                        "contract_duration": safe("contract_duration"),
+                                        "legal_clauses": safe("legal_clauses"),
+                                        "risk_liability": safe("risk_liability")
+                                    },
+                                    "Miscellaneous / Notes": {
+                                        "additional_notes": safe("additional_notes"),
+                                        "contact_person": safe("contact_person"),
+                                        "contact_email": safe("contact_email")
+                                    }
+                                }
+
+                                st.session_state['ai_filled'] = True
+                                st.success("AI has generated initial suggestions!")
+                                st.experimental_rerun()
+                            else:
+                                st.warning("AI output is empty or invalid. Please fill manually.")
+
                     except Exception as e:
                         st.error(f"Groq API error: {e}")
 
@@ -236,19 +246,15 @@ with col2:
     if st.button("Next") and current_step_index < len(steps) - 1:
         if current_step == "Choose Input Method" and not st.session_state['input_option']:
             st.warning("Please select an input method before proceeding.")
-
         elif current_step == "Provide Information":
             input_option = st.session_state['input_option']
             if input_option == "Paste Company URL" and not st.session_state['company_text']:
                 st.warning("Please provide a valid company URL and parse it.")
-
             elif input_option == "Upload Supporting Documents" and not st.session_state['uploaded_text']:
                 st.warning("Please upload and parse at least one document.")
-
             else:
                 st.session_state['current_step'] += 1
                 st.experimental_rerun()
-
         else:
             st.session_state['current_step'] += 1
             st.experimental_rerun()
