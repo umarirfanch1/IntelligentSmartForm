@@ -15,58 +15,79 @@ def extract_json(text):
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API (latest SDK).
-    Returns a dict ready to fill the form.
+    Generate AI suggestions for the partnership form using Cohere Chat API.
+    Returns a dict ready to fill the partnership form fields.
     """
 
     if api_key is None:
         api_key = st.secrets.get("cohere", {}).get("api_key")
         if not api_key:
-            raise ValueError("Cohere API key is missing. Set it in Streamlit secrets.")
+            raise ValueError("Cohere API key is missing in Streamlit secrets.")
 
     co = cohere.Client(api_key)
 
-    # Combine all context
-    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{manual_input}"
+    # Combine context
+    context = (
+        f"Company Info:\n{company_info_text}\n\n"
+        f"Documents:\n{uploaded_docs_text}\n\n"
+        f"Manual Input:\n{manual_input}"
+    )
 
-    # Updated Prompt for AI
+    # ---------------------------------------------
+    # FIXED PROMPT (only necessary changes applied)
+    # ---------------------------------------------
     prompt = f"""
-You are an expert in corporate partnerships. Your task is to fill the partnership form 
-based on the context provided. Return the output strictly in JSON format matching the 
-following structure (without any additional root key like "partnership_form"):
+You are an expert in corporate partnerships. Based on the provided context,
+fill the fields of the partnership form with the most relevant information.
+
+Return the output STRICTLY in JSON format with EXACTLY the following keys:
 
 {{
     "company_name": "",
-    "contact_name": "",
-    "contact_email": "",
-    "contact_phone": "",
+    "company_url": "",
+    "founding_year": "",
+    "num_employees": "",
+    "hq_location": "",
+
+    "partner_name": "",
     "partnership_type": "",
-    "products_services": [],
-    "promotions": [],
-    "trade_in_program": {{
-        "name": "",
-        "description": "",
-        "terms_conditions": ""
-    }},
-    "additional_notes": ""
+    "partnership_start_date": "",
+    "partnership_goals": "",
+    "expected_contributions": "",
+
+    "mission_statement": "",
+    "product_overview": "",
+    "target_market": "",
+    "competitive_advantage": "",
+
+    "investment_amount": "",
+    "contract_duration": "",
+    "legal_clauses": "",
+    "risk_liability": "",
+
+    "additional_notes": "",
+    "contact_person": "",
+    "contact_email": ""
 }}
+
+Do NOT add explanations, commentary, or extra fields.
+Use the context to infer any missing data.
 
 Context:
 {context}
 """
 
     try:
-        # Correct Chat API usage
+        # Call Cohere Chat
         response = co.chat(
-            model="command-xlarge-nightly",  # Cohere Chat model
+            model="command-xlarge-nightly",
             message=prompt,
             max_tokens=1500,
-            temperature=0.7
+            temperature=0.3
         )
 
-        # Extract only JSON from AI output
-        output_text = response.text.strip()
-        return extract_json(output_text)
+        ai_output = response.text.strip()
+        return extract_json(ai_output)
 
     except Exception as e:
         st.error(f"Unexpected error in AI fill: {e}")
