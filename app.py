@@ -103,12 +103,14 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                     manual_input=st.session_state['manual_input'],
                     api_key=st.secrets["cohere"]["api_key"]  # Using secret
                 )
-                import ast
                 try:
-                    st.session_state['form_data'] = ast.literal_eval(ai_output) if isinstance(ai_output, str) else ai_output
-                except:
-                    st.warning("AI output could not be parsed, please check manually.")
-            st.success("AI has generated initial suggestions!")
+                    # Attempt to parse AI output as JSON
+                    st.session_state['form_data'] = json.loads(ai_output) if isinstance(ai_output, str) else ai_output
+                    st.success("AI has generated initial suggestions!")
+                except json.JSONDecodeError as e:
+                    st.error("AI output could not be parsed. Please check manually. Ensure the output is valid JSON.")
+                    st.error(f"Error details: {e}")
+                    st.code(ai_output, language="json")  # Display raw AI output for debugging
 
     # Editable form
     for section_key, section in template.items():
