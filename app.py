@@ -1,7 +1,14 @@
+mport sys
+import os
+
+# ----------------------------
+# Ensure current directory is in Python path
+# ----------------------------
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import streamlit as st
 import requests
 import json
-import os
 import base64
 from utils.parser import parse_website, parse_uploaded_docs
 from utils.ai_fill import fill_form_with_ai
