@@ -4,7 +4,7 @@ import json
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API (latest SDK).
+    Generate AI suggestions for the partnership form using Cohere Generate API (latest working method).
     """
 
     if api_key is None:
@@ -27,19 +27,17 @@ Context:
 """
 
     try:
-        # Correct usage with latest SDK
-        response = co.chat(
-            model="command-xlarge-nightly",
-            message=[  # must be plural
-                {"role": "system", "content": "You are an expert in corporate partnerships."},
-                {"role": "user", "content": prompt}
-            ],
+        response = co.generate(
+            model="command-xlarge-nightly",  # compatible with trial accounts
+            prompt=prompt,
             max_tokens=1500
         )
 
-        # Correct way to get text
         return response.generations[0].text.strip()
 
+    except cohere.error.CohereError as e:
+        st.error(f"Cohere API error: {e}")
+        return "{}"
     except Exception as e:
         st.error(f"Unexpected error in AI fill: {e}")
         return "{}"
