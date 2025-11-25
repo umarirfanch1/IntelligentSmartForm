@@ -20,6 +20,7 @@ st.markdown("---")
 # Initialize session state
 # ----------------------------
 for key, default in {
+    'current_step': 0,
     'input_option': None,
     'company_text': "",
     'uploaded_text': "",
@@ -36,12 +37,15 @@ template_path = "partnership_template.json"
 with open(template_path, "r") as f:
     template = json.load(f)
 
-# ----------------------------
-# Sidebar for steps
-# ----------------------------
-st.sidebar.header("Steps")
 steps = ["Choose Input Method", "Provide Information", "AI Pre-Fill & Review", "Edit Form", "Preview PDF"]
-current_step = st.sidebar.radio("Current Step", steps)
+current_step_index = st.session_state['current_step']
+current_step = steps[current_step_index]
+
+st.sidebar.header("Steps")
+for i, step_name in enumerate(steps):
+    st.sidebar.markdown(
+        f"{'✅' if i < current_step_index else '➡️' if i == current_step_index else '❌'} {step_name}"
+    )
 
 # ----------------------------
 # Step 1: Choose Input Method
@@ -153,3 +157,16 @@ elif current_step == "Preview PDF":
                 st.error(f"Failed to send email: {e}")
     else:
         st.warning("Form data is empty. Please fill or auto-generate the form first.")
+
+# ----------------------------
+# Navigation Buttons
+# ----------------------------
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("Back") and current_step_index > 0:
+        st.session_state['current_step'] -= 1
+        st.experimental_rerun()
+with col2:
+    if st.button("Next") and current_step_index < len(steps)-1:
+        st.session_state['current_step'] += 1
+        st.experimental_rerun()
