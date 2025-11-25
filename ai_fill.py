@@ -15,7 +15,7 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
     co = cohere.Client(api_key)
 
     # Combine all context
-    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{manual_input}"
+    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{json.dumps(manual_input)}"
 
     # Prompt for AI
     prompt = f"""
@@ -27,14 +27,15 @@ Context:
 """
 
     try:
-        # Using trial-compatible model
-        response = co.generate(
-            model="command-xlarge-nightly",
-            prompt=prompt,
+        # Using Chat API instead of Generate API
+        response = co.chat(
+            message=prompt,
+            model="command-xlarge-nightly",  # Use the appropriate Chat model
+            temperature=0.7,  # Adjust as needed
             max_tokens=1500
         )
 
-        return response.generations[0].text.strip()
+        return response.text.strip()
 
     except Exception as e:
         st.error(f"Unexpected error in AI fill: {e}")
