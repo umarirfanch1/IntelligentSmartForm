@@ -1,34 +1,22 @@
-import streamlit as st
-import openai
+import os
 import json
-import re
+import requests
+import streamlit as st
 
-def extract_json(text):
-    try:
-        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
-        if match:
-            return json.loads(match.group())
-    except json.JSONDecodeError:
-        pass
-    return {}
+def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
+    """
+    Uses Groq API to generate pre-filled partnership form suggestions.
+    """
 
-def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}):
-    api_key = st.secrets["OpenAPI"]["api_key"]
-    if not api_key:
-        raise ValueError("OpenAI API key is missing in Streamlit secrets.")
-    openai.api_key = api_key
+    if api_key is None:
+        api_key = st.secrets.get("GroqAPI", {}).get("api_key")
+        if not api_key:
+            raise ValueError("Groq API key is missing. Set it in Streamlit secrets.")
 
-    context = (
-        f"Company Info:\n{company_info_text}\n\n"
-        f"Documents:\n{uploaded_docs_text}\n\n"
-        f"Manual Input:\n{manual_input}"
-    )
+    context = f"Company Info:\n{company_info_text}\nDocuments:\n{uploaded_docs_text}\nManual Input:\n{manual_input}"
 
     prompt = f"""
-You are an expert in corporate partnerships. Based on the provided context,
-fill the fields of the partnership form with the most relevant information.
-
-Return the output STRICTLY in JSON format with EXACTLY the following keys:
+You are an expert in corporate partnerships. Fill the partnership form in JSON format exactly with these keys:
 
 {{
     "company_name": "",
@@ -36,40 +24,46 @@ Return the output STRICTLY in JSON format with EXACTLY the following keys:
     "founding_year": "",
     "num_employees": "",
     "hq_location": "",
-
     "partner_name": "",
     "partnership_type": "",
     "partnership_start_date": "",
     "partnership_goals": "",
     "expected_contributions": "",
-
     "mission_statement": "",
     "product_overview": "",
     "target_market": "",
     "competitive_advantage": "",
-
     "investment_amount": "",
     "contract_duration": "",
     "legal_clauses": "",
     "risk_liability": "",
-
     "additional_notes": "",
     "contact_person": "",
     "contact_email": ""
 }}
 
-Do NOT add explanations, commentary, or extra fields.
-Use the context to infer any missing data.
+Use context to infer any missing information. Return ONLY JSON, no explanations.
 
 Context:
 {context}
 """
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3
-    )
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {
+        "prompt": prompt,
+        "max_output_tokens": 1500,
+        "temperature": 0.3
+    }
 
-    ai_text = response["choices"][0]["message"]["content"].strip()
-    return extract_json(ai_text)
+    response = requests.post("https://api.groq.com/v1/generate", headers=headers, json=payload)
+    
+    if response.status_code != 200:
+        st.error(f"Groq API Error: {response.status_code} {response.text}")
+        return {}
+
+    try:
+        ai_text = response.json().get("text", "")
+        return json.loads(ai_text)
+    except Exception:
+        st.warning("AI output is empty or invalid. Please fill manually.")
+        return {}
