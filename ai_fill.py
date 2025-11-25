@@ -4,7 +4,7 @@ import json
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API.
+    Generate AI suggestions for the partnership form using Cohere Chat API (v4+).
     """
 
     if api_key is None:
@@ -25,7 +25,6 @@ based on the context provided. Return the output strictly in JSON format matchin
     user_message = f"Context:\n{context}"
 
     try:
-        # Use 'messages' instead of 'message'
         response = co.chat(
             model="xlarge",
             messages=[
@@ -34,11 +33,8 @@ based on the context provided. Return the output strictly in JSON format matchin
             ],
             max_tokens=1500
         )
-        # Cohere Chat returns a list of generations
-        return response.generations[0].content.strip()
-    except cohere.error.CohereError as e:
-        st.error(f"Cohere API error: {e}")
-        return "{}"
-    except Exception as e:
+        return response.output_text.strip()
+
+    except Exception as e:  # Catch all exceptions (Cohere v4+ unified error handling)
         st.error(f"Unexpected error in AI fill: {e}")
         return "{}"
