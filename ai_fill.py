@@ -72,21 +72,30 @@ Context:
         response = co.chat(
             model="command-xlarge-nightly",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,  # correct parameter
+            max_tokens=1500,
             temperature=0.3
         )
 
-        # According to docs: response.message.content is list of dicts
-        ai_message = response.message.content[0].text  
-        json_data = extract_json(ai_message)
+        # Cohere v2 returns a list of "content" objects; we need type=='output_text'
+        text_output = ""
+        for item in response.message.content:
+            if item.get("type") == "output_text":
+                text_output += item.get("text", "")
 
-        # Ensure all required keys exist
+        if not text_output.strip():
+            st.error("AI response was empty.")
+            return {}
+
+        # Extract JSON from the text
+        json_data = extract_json(text_output)
+
+        # Ensure all keys exist
         required_keys = [
-            "company_name", "company_url", "founding_year", "num_employees", "hq_location",
-            "partner_name", "partnership_type", "partnership_start_date", "partnership_goals",
-            "expected_contributions", "mission_statement", "product_overview", "target_market",
-            "competitive_advantage", "investment_amount", "contract_duration", "legal_clauses",
-            "risk_liability", "additional_notes", "contact_person", "contact_email"
+            "company_name","company_url","founding_year","num_employees","hq_location",
+            "partner_name","partnership_type","partnership_start_date","partnership_goals",
+            "expected_contributions","mission_statement","product_overview","target_market",
+            "competitive_advantage","investment_amount","contract_duration","legal_clauses",
+            "risk_liability","additional_notes","contact_person","contact_email"
         ]
         for key in required_keys:
             if key not in json_data:
@@ -96,6 +105,4 @@ Context:
 
     except Exception as e:
         st.error(f"Error generating AI suggestions: {e}")
-        # For debugging: show the prompt or part of it
-        st.write("Prompt was:", prompt[:500] + " …")
         return {}
