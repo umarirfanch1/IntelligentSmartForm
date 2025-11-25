@@ -1,3 +1,4 @@
+
 # ai_fill.py
 import os
 import json
@@ -6,7 +7,7 @@ import streamlit as st
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}):
     """
-    Uses Groq API (OpenAI‑compatible) to generate pre-filled partnership form suggestions.
+    Uses Groq API (OpenAI-compatible) to generate pre-filled partnership form suggestions.
     """
     # Get API key from secrets
     api_key = st.secrets.get("GROQ", {}).get("api_key")
@@ -54,24 +55,29 @@ Context:
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
+
     payload = {
-        "model": "gpt-3.5-turbo",     # or another Groq-compatible model name
+        # FIXED: use a valid Groq model
+        "model": "llama-3.1-8b-instant",
+        # OR use: "llama-3.1-70b-versatile",
         "messages": [
             {"role": "system", "content": "You are an expert in corporate partnerships."},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.3,
-        "max_tokens": 1500
+        "temperature": 0,
+        "max_tokens": 2000
     }
 
     response = requests.post(url, headers=headers, json=payload)
+
     if response.status_code != 200:
         st.error(f"Groq API Error: {response.status_code} — {response.text}")
         return {}
 
     try:
-        text = response.json()["choices"][0]["message"]["content"]
+        text = response.json()["choices"][0]["message"]["content"].strip()
         return json.loads(text)
     except Exception as e:
         st.warning(f"AI output is empty or invalid JSON. Please fill manually. ({e})")
         return {}
+        p
