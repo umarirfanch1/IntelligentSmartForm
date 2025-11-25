@@ -3,7 +3,7 @@ import json
 import os
 import base64
 from company_parser import parse_website, parse_uploaded_docs
-from ai_fill import fill_form_with_ai  # Make sure ai_fill.py uses Groq API
+from ai_fill import fill_form_with_ai  # ai_fill.py must use Groq API now
 from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
@@ -73,23 +73,21 @@ elif current_step == "Provide Information":
     else:
         if input_option == "Paste Company URL":
             company_url = st.text_input("Paste Company Website URL", key="company_url_input")
-            if company_url:
-                if 'company_parsed' not in st.session_state or not st.session_state['company_parsed']:
-                    with st.spinner("Parsing website content..."):
-                        st.session_state['company_text'] = parse_website(company_url)
-                        st.session_state['company_parsed'] = True
-                        st.success(f"Website parsed! {len(st.session_state['company_text'].split())} words extracted.")
+            if company_url and not st.session_state.get('company_parsed', False):
+                with st.spinner("Parsing website content..."):
+                    st.session_state['company_text'] = parse_website(company_url)
+                    st.session_state['company_parsed'] = True
+                    st.success(f"Website parsed! {len(st.session_state['company_text'].split())} words extracted.")
 
         elif input_option == "Upload Supporting Documents":
             uploaded_files = st.file_uploader(
                 "Upload PDFs or Word Docs", type=["pdf", "docx"], accept_multiple_files=True, key="uploaded_files_input"
             )
-            if uploaded_files:
-                if 'docs_parsed' not in st.session_state or not st.session_state['docs_parsed']:
-                    with st.spinner("Parsing uploaded files..."):
-                        st.session_state['uploaded_text'] = parse_uploaded_docs(uploaded_files)
-                        st.session_state['docs_parsed'] = True
-                        st.success(f"{len(uploaded_files)} file(s) parsed! {len(st.session_state['uploaded_text'].split())} words extracted.")
+            if uploaded_files and not st.session_state.get('docs_parsed', False):
+                with st.spinner("Parsing uploaded files..."):
+                    st.session_state['uploaded_text'] = parse_uploaded_docs(uploaded_files)
+                    st.session_state['docs_parsed'] = True
+                    st.success(f"{len(uploaded_files)} file(s) parsed! {len(st.session_state['uploaded_text'].split())} words extracted.")
         elif input_option == "Manual Form Input":
             st.info("You will fill the partnership form manually in the next step.")
 
@@ -102,55 +100,58 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     if not st.session_state['ai_filled']:
         if st.button("Auto-Fill Form with AI"):
             with st.spinner("Generating AI suggestions with Groq API..."):
-                ai_output = fill_form_with_ai(
-                    company_info_text=st.session_state['company_text'],
-                    uploaded_docs_text=st.session_state['uploaded_text'],
-                    manual_input=st.session_state['manual_input']
-                )
+                try:
+                    ai_output = fill_form_with_ai(
+                        company_info_text=st.session_state['company_text'],
+                        uploaded_docs_text=st.session_state['uploaded_text'],
+                        manual_input=st.session_state['manual_input']
+                    )
 
-                if isinstance(ai_output, dict) and ai_output:
-                    def safe(key):
-                        return ai_output.get(key, "")
+                    if isinstance(ai_output, dict) and ai_output:
+                        def safe(key):
+                            return ai_output.get(key, "")
 
-                    st.session_state['form_data'] = {
-                        "Company Information": {
-                            "company_name": safe("company_name"),
-                            "company_url": safe("company_url"),
-                            "founding_year": safe("founding_year"),
-                            "num_employees": safe("num_employees"),
-                            "hq_location": safe("hq_location")
-                        },
-                        "Partnership Details": {
-                            "partner_name": safe("partner_name"),
-                            "partnership_type": safe("partnership_type"),
-                            "partnership_start_date": safe("partnership_start_date"),
-                            "partnership_goals": safe("partnership_goals"),
-                            "expected_contributions": safe("expected_contributions")
-                        },
-                        "Product / Service Description": {
-                            "mission_statement": safe("mission_statement"),
-                            "product_overview": safe("product_overview"),
-                            "target_market": safe("target_market"),
-                            "competitive_advantage": safe("competitive_advantage")
-                        },
-                        "Legal & Financial Information": {
-                            "investment_amount": safe("investment_amount"),
-                            "contract_duration": safe("contract_duration"),
-                            "legal_clauses": safe("legal_clauses"),
-                            "risk_liability": safe("risk_liability")
-                        },
-                        "Miscellaneous / Notes": {
-                            "additional_notes": safe("additional_notes"),
-                            "contact_person": safe("contact_person"),
-                            "contact_email": safe("contact_email")
+                        st.session_state['form_data'] = {
+                            "Company Information": {
+                                "company_name": safe("company_name"),
+                                "company_url": safe("company_url"),
+                                "founding_year": safe("founding_year"),
+                                "num_employees": safe("num_employees"),
+                                "hq_location": safe("hq_location")
+                            },
+                            "Partnership Details": {
+                                "partner_name": safe("partner_name"),
+                                "partnership_type": safe("partnership_type"),
+                                "partnership_start_date": safe("partnership_start_date"),
+                                "partnership_goals": safe("partnership_goals"),
+                                "expected_contributions": safe("expected_contributions")
+                            },
+                            "Product / Service Description": {
+                                "mission_statement": safe("mission_statement"),
+                                "product_overview": safe("product_overview"),
+                                "target_market": safe("target_market"),
+                                "competitive_advantage": safe("competitive_advantage")
+                            },
+                            "Legal & Financial Information": {
+                                "investment_amount": safe("investment_amount"),
+                                "contract_duration": safe("contract_duration"),
+                                "legal_clauses": safe("legal_clauses"),
+                                "risk_liability": safe("risk_liability")
+                            },
+                            "Miscellaneous / Notes": {
+                                "additional_notes": safe("additional_notes"),
+                                "contact_person": safe("contact_person"),
+                                "contact_email": safe("contact_email")
+                            }
                         }
-                    }
 
-                    st.session_state['ai_filled'] = True
-                    st.success("AI has generated initial suggestions!")
-                    st.experimental_rerun()
-                else:
-                    st.warning("AI output is empty or invalid. Please fill manually.")
+                        st.session_state['ai_filled'] = True
+                        st.success("AI has generated initial suggestions!")
+                        st.experimental_rerun()
+                    else:
+                        st.warning("AI output is empty or invalid. Please fill manually.")
+                except Exception as e:
+                    st.error(f"Groq API error: {e}")
 
     # Editable Form UI
     for section_key, section in template.items():
