@@ -1,7 +1,7 @@
 python-docx==0.8.11        # For parsing Word documents
 sendgrid==6.12.5           # For sending emails
 streamlit==1.27.0          # For the Streamlit app
-openai>=0.27.0             # For AI form filling
+openai>=1.0.0              # For AI form filling using OpenAI Chat API
 requests==2.31.0           # For HTTP requests
 beautifulsoup4==4.12.2     # For parsing HTML
 lxml==4.9.3                # Required by BeautifulSoup parser
