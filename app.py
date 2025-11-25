@@ -2,8 +2,7 @@ import streamlit as st
 import json
 import os
 import base64
-
-from parser import parse_website, parse_uploaded_docs
+from company_parser import parse_website, parse_uploaded_docs
 from ai_fill import fill_form_with_ai
 from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
