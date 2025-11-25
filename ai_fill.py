@@ -1,45 +1,31 @@
+# ai_fill.py
 import cohere
-import streamlit as st
+import os
 
-def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
+# Use Streamlit secrets if available, else fallback to environment variable
+api_key = os.getenv("COHERE_API_KEY") or st.secrets["cohere_api_key"]
+co = cohere.Client(api_key)
+
+def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}):
     """
-    Generate AI suggestions for the partnership form using Cohere Chat API (ClientV2).
+    Fills the partnership form using Cohere chat endpoint.
+    Combines company info, uploaded docs, and manual input into one prompt.
+    Returns JSON-formatted string.
     """
+    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{manual_input}"
 
-    if api_key is None:
-        api_key = st.secrets.get("cohere", {}).get("api_key")
-        if not api_key:
-            raise ValueError("Cohere API key is missing. Set it in Streamlit secrets.")
-
-    co = cohere.ClientV2(api_key=api_key)
-
-    context = (
-        f"Company Info:\n{company_info_text}\n\n"
-        f"Documents:\n{uploaded_docs_text}\n\n"
-        f"Manual Input:\n{manual_input}"
-    )
-
-    system_message = {
-        "role": "system",
-        "content": "You are an expert in corporate partnerships. Fill the partnership form based on the context. Return output strictly in JSON format matching the template."
-    }
-
-    user_message = {
-        "role": "user",
-        "content": context
-    }
+    messages = [
+        {"role": "system", "content": "You are an expert in corporate partnerships, helping to fill forms accurately."},
+        {"role": "user", "content": f"Fill the partnership form based on the following context in JSON matching the template:\n{context}"}
+    ]
 
     try:
         response = co.chat(
-            model="command-a-03-2025",  # or whichever chat model you're using
-            messages=[system_message, user_message],
+            model="command-xlarge-nightly",
+            messages=messages,
             max_tokens=1500
         )
-        # The response.message.content is a list of objects; get the text
-        return response.message.content[0].text.strip()
-    except cohere.error.CohereError as e:
-        st.error(f"Cohere API error: {e}")
-        return "{}"
+        # Cohere chat returns response.generations[0].content
+        return response.generations[0].content.strip()
     except Exception as e:
-        st.error(f"Unexpected error in AI fill: {e}")
-        return "{}"
+        return f"Error in AI fill: {e}"
