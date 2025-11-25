@@ -1,6 +1,5 @@
 import cohere
 import streamlit as st
-import json
 
 def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={}, api_key=None):
     """
@@ -12,29 +11,32 @@ def fill_form_with_ai(company_info_text, uploaded_docs_text="", manual_input={},
         if not api_key:
             raise ValueError("Cohere API key is missing. Set it in Streamlit secrets.")
 
-    co = cohere.Client(api_key)
+    co = cohere.ClientV2(api_key)  # Use ClientV2 for newer API
 
-    # Combine all context
-    context = f"Company Info:\n{company_info_text}\n\nDocuments:\n{uploaded_docs_text}\n\nManual Input:\n{manual_input}"
+    # Combine context
+    context = (
+        f"Company Info:\n{company_info_text}\n\n"
+        f"Documents:\n{uploaded_docs_text}\n\n"
+        f"Manual Input:\n{manual_input}"
+    )
 
-    system_message = """
-You are an expert in corporate partnerships. Your task is to fill the partnership form 
-based on the context provided. Return the output strictly in JSON format matching the template placeholders.
-"""
+    # System / instruction message
+    system_instruction = (
+        "You are an expert in corporate partnerships. "
+        "Your task is to fill the partnership form based on the context, "
+        "and return output strictly in JSON format matching the form template."
+    )
 
-    user_message = f"Context:\n{context}"
-
+    # Cohere v2 chat call uses `message=` for user content
     try:
         response = co.chat(
-            model="xlarge",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message}
-            ],
+            model="command-a-03-2025",
+            message=context,
+            preamble=system_instruction,
             max_tokens=1500
         )
-        # Cohere Chat returns a list of generations
-        return response.generations[0].text.strip()
+        # `response.message.content[0].text` holds the generated text
+        return response.message.content[0].text.strip()
     except cohere.error.CohereError as e:
         st.error(f"Cohere API error: {e}")
         return "{}"
