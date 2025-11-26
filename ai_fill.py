@@ -2,7 +2,7 @@ import os
 import json
 import requests
 import streamlit as st
-
+st.write(st.secrets.get("GROQ"))
 def fill_form_with_ai(combined_text: str) -> dict:
     """
     Send combined text to Groq API and return structured JSON for the form.
