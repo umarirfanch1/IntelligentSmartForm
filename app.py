@@ -75,13 +75,19 @@ elif current_step == "Provide Information":
             with st.spinner("Parsing website..."):
                 st.session_state['company_text'] = parse_website(url)
                 st.session_state['company_parsed'] = True
-                st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
+                if st.session_state['company_text'].strip():
+                    st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
+                else:
+                    st.warning("Website text is empty. Site may require JS rendering or is protected.")
 
         if files and not st.session_state['docs_parsed']:
             with st.spinner("Parsing uploaded files..."):
                 st.session_state['uploaded_text'] = parse_uploaded_docs(files)
                 st.session_state['docs_parsed'] = True
-                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
+                if st.session_state['uploaded_text'].strip():
+                    st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
+                else:
+                    st.warning("Uploaded files contained no readable text.")
 
     elif option == "Manual Form Input":
         st.info("You will fill the form manually in the next step.")
@@ -93,64 +99,24 @@ elif current_step == "AI Pre-Fill & Review":
     st.header("Step 3: AI Pre-Fill & Review Form")
     option = st.session_state['input_option']
 
-    if option == "AI Auto-Fill (URL and/or PDF)":
-        if st.button("Auto-Fill Form with AI") and not st.session_state['ai_filled']:
-            combined_text = ""
-            if st.session_state.get('company_text'):
-                combined_text += st.session_state['company_text']
-            if st.session_state.get('uploaded_text'):
-                combined_text += "\n" + st.session_state['uploaded_text']
+    combined_text = (st.session_state.get('company_text','') + "\n" + st.session_state.get('uploaded_text','')).strip()
 
-            if combined_text.strip():
-                with st.spinner("Generating AI suggestions..."):
-                    try:
-                        ai_output = fill_form_with_ai(combined_text)
-                        if ai_output:
-                            def safe(k): return ai_output.get(k, "")
-                            st.session_state['form_data'] = {
-                                "Company Information": {
-                                    "company_name": safe("company_name"),
-                                    "company_url": safe("company_url"),
-                                    "founding_year": safe("founding_year"),
-                                    "num_employees": safe("num_employees"),
-                                    "hq_location": safe("hq_location")
-                                },
-                                "Partnership Details": {
-                                    "partner_name": safe("partner_name"),
-                                    "partnership_type": safe("partnership_type"),
-                                    "partnership_start_date": safe("partnership_start_date"),
-                                    "partnership_goals": safe("partnership_goals"),
-                                    "expected_contributions": safe("expected_contributions")
-                                },
-                                "Product / Service Description": {
-                                    "mission_statement": safe("mission_statement"),
-                                    "product_overview": safe("product_overview"),
-                                    "target_market": safe("target_market"),
-                                    "competitive_advantage": safe("competitive_advantage")
-                                },
-                                "Legal & Financial Information": {
-                                    "investment_amount": safe("investment_amount"),
-                                    "contract_duration": safe("contract_duration"),
-                                    "legal_clauses": safe("legal_clauses"),
-                                    "risk_liability": safe("risk_liability")
-                                },
-                                "Miscellaneous / Notes": {
-                                    "additional_notes": safe("additional_notes"),
-                                    "contact_person": safe("contact_person"),
-                                    "contact_email": safe("contact_email")
-                                }
-                            }
-                            st.session_state['ai_filled'] = True
-                            st.success("AI has populated the form!")
-                            st.rerun()
-                        else:
-                            st.warning("AI returned empty or invalid output.")
-                    except Exception as e:
-                        st.error(f"AI generation failed: {e}")
+    if option == "AI Auto-Fill (URL and/or PDF)" and not st.session_state['ai_filled']:
+        if st.button("Auto-Fill Form with AI"):
+            if not combined_text:
+                st.warning("No parsed content to send to AI.")
             else:
-                st.warning("No parsed data to send to AI.")
+                with st.spinner("Generating AI suggestions..."):
+                    ai_output = fill_form_with_ai(combined_text)
+                    if ai_output:
+                        st.session_state['form_data'] = ai_output
+                        st.session_state['ai_filled'] = True
+                        st.success("AI has populated the form!")
+                        st.rerun()
+                    else:
+                        st.warning("AI returned empty or invalid output.")
 
-    # Show editable form in all cases
+    # Show editable form always
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
