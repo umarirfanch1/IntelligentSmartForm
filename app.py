@@ -3,10 +3,10 @@ import json
 import os
 import base64
 from company_parser import parse_website, parse_uploaded_docs
-from ai_fill import fill_form_with_ai  # local LLM
 from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+import re
 
 # ----------------------------
 # Streamlit Page Setup
@@ -51,6 +51,62 @@ for i, step_name in enumerate(steps):
     st.sidebar.markdown(f"{'✅' if i < current_step_index else '➡️' if i == current_step_index else '❌'} {step_name}")
 
 # ----------------------------
+# Local LLM-style autofill
+# ----------------------------
+def local_autofill(combined_text: str):
+    """
+    Auto-fill the partnership form from combined text.
+    Uses simple pattern matching and keyword search.
+    Fields not found are left blank or marked as 'REQUIRED'.
+    """
+    output = {}
+    
+    def find(patterns):
+        for p in patterns:
+            match = re.search(p, combined_text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        return ""  # return empty if not found
+
+    # Section 1: Company Information
+    output['company_name'] = find([r"company name[:\-\s]+(.+)", r"name of the company[:\-\s]+(.+)"])
+    output['company_url'] = find([r"(https?://[^\s]+)"])
+    output['founding_year'] = find([r"founded in (\d{4})", r"established in (\d{4})"])
+    output['num_employees'] = find([r"(\d+) employees", r"staff[:\-\s]+(\d+)"])
+    output['hq_location'] = find([r"headquarters[:\-\s]+(.+)", r"based in[:\-\s]+(.+)"])
+
+    # Section 2: Partnership Details
+    output['partner_name'] = find([r"partner name[:\-\s]+(.+)"])
+    output['partnership_type'] = find([r"type of partnership[:\-\s]+(.+)"])
+    output['partnership_start_date'] = find([r"start date[:\-\s]+(.+)"])
+    output['partnership_goals'] = find([r"goals[:\-\s]+(.+)"])
+    output['expected_contributions'] = find([r"contributions[:\-\s]+(.+)"])
+
+    # Section 3: Product / Service Description
+    output['mission_statement'] = find([r"mission statement[:\-\s]+(.+)"])
+    output['product_overview'] = find([r"product overview[:\-\s]+(.+)"])
+    output['target_market'] = find([r"target market[:\-\s]+(.+)"])
+    output['competitive_advantage'] = find([r"competitive advantage[:\-\s]+(.+)"])
+
+    # Section 4: Legal & Financial Information
+    output['investment_amount'] = find([r"investment amount[:\-\s]+(.+)"])
+    output['contract_duration'] = find([r"contract duration[:\-\s]+(.+)"])
+    output['legal_clauses'] = find([r"legal clauses[:\-\s]+(.+)"])
+    output['risk_liability'] = find([r"risk[:\-\s]+(.+)"])
+
+    # Section 5: Miscellaneous / Notes
+    output['additional_notes'] = find([r"additional notes[:\-\s]+(.+)"])
+    output['contact_person'] = find([r"contact person[:\-\s]+(.+)"])
+    output['contact_email'] = find([r"[\w\.-]+@[\w\.-]+"])
+
+    # Mark missing fields as REQUIRED
+    for k, v in output.items():
+        if not v:
+            output[k] = "REQUIRED"
+
+    return output
+
+# ----------------------------
 # Step 1: Choose Input Method
 # ----------------------------
 if current_step == "Choose Input Method":
@@ -71,21 +127,17 @@ elif current_step == "Provide Information":
         url = st.text_input("Paste Company Website URL (optional)")
         files = st.file_uploader("Upload PDFs or Word Docs (optional)", type=["pdf", "docx"], accept_multiple_files=True)
 
-        # Parse website
         if url and not st.session_state['company_parsed']:
             with st.spinner("Parsing website..."):
                 st.session_state['company_text'] = parse_website(url)
                 st.session_state['company_parsed'] = True
-                word_count = len(st.session_state['company_text'].split())
-                st.success(f"Parsed {word_count} words from website.")
+                st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
 
-        # Parse uploaded documents
         if files and not st.session_state['docs_parsed']:
             with st.spinner("Parsing uploaded files..."):
                 st.session_state['uploaded_text'] = parse_uploaded_docs(files)
                 st.session_state['docs_parsed'] = True
-                word_count = len(st.session_state['uploaded_text'].split())
-                st.success(f"Parsed {word_count} words from documents.")
+                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
 
     elif option == "Manual Form Input":
         st.info("You will fill the form manually in the next step.")
@@ -94,29 +146,59 @@ elif current_step == "Provide Information":
 # Step 3: AI Pre-Fill & Review Form
 # ----------------------------
 elif current_step == "AI Pre-Fill & Review":
-    st.header("Step 3: AI Pre-Fill & Review Form")
+    st.header("Step 3: Auto-Fill & Review Form")
     option = st.session_state['input_option']
 
-    if option == "AI Auto-Fill (URL and/or PDF)":
-        if st.button("Auto-Fill Form with AI") and not st.session_state['ai_filled']:
-            combined_text = ""
-            if st.session_state.get('company_text'):
-                combined_text += st.session_state['company_text']
-            if st.session_state.get('uploaded_text'):
-                combined_text += "\n" + st.session_state['uploaded_text']
+    combined_text = ""
+    if st.session_state.get('company_text'):
+        combined_text += st.session_state['company_text'].strip()
+    if st.session_state.get('uploaded_text'):
+        if combined_text:
+            combined_text += "\n\n"
+        combined_text += st.session_state['uploaded_text'].strip()
 
-            if combined_text.strip():
-                with st.spinner("Generating AI suggestions locally..."):
-                    try:
-                        ai_output = fill_form_with_ai(combined_text)
-                        st.session_state['form_data'] = ai_output
-                        st.session_state['ai_filled'] = True
-                        st.success("Form auto-filled based on available data!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Local AI generation failed: {e}")
+    if option == "AI Auto-Fill (URL and/or PDF)":
+        if st.button("Auto-Fill Form") and not st.session_state['ai_filled']:
+            if combined_text:
+                with st.spinner("Auto-filling form..."):
+                    ai_output = local_autofill(combined_text)
+                    st.session_state['form_data'] = {
+                        "Company Information": {
+                            "company_name": ai_output["company_name"],
+                            "company_url": ai_output["company_url"],
+                            "founding_year": ai_output["founding_year"],
+                            "num_employees": ai_output["num_employees"],
+                            "hq_location": ai_output["hq_location"]
+                        },
+                        "Partnership Details": {
+                            "partner_name": ai_output["partner_name"],
+                            "partnership_type": ai_output["partnership_type"],
+                            "partnership_start_date": ai_output["partnership_start_date"],
+                            "partnership_goals": ai_output["partnership_goals"],
+                            "expected_contributions": ai_output["expected_contributions"]
+                        },
+                        "Product / Service Description": {
+                            "mission_statement": ai_output["mission_statement"],
+                            "product_overview": ai_output["product_overview"],
+                            "target_market": ai_output["target_market"],
+                            "competitive_advantage": ai_output["competitive_advantage"]
+                        },
+                        "Legal & Financial Information": {
+                            "investment_amount": ai_output["investment_amount"],
+                            "contract_duration": ai_output["contract_duration"],
+                            "legal_clauses": ai_output["legal_clauses"],
+                            "risk_liability": ai_output["risk_liability"]
+                        },
+                        "Miscellaneous / Notes": {
+                            "additional_notes": ai_output["additional_notes"],
+                            "contact_person": ai_output["contact_person"],
+                            "contact_email": ai_output["contact_email"]
+                        }
+                    }
+                    st.session_state['ai_filled'] = True
+                    st.success("Form auto-filled! Missing fields are marked as REQUIRED.")
             else:
-                st.warning("No parsed data to send to AI.")
+                st.warning("No data available to auto-fill.")
 
     # Show editable form in all cases
     for section_key, section in template.items():
