@@ -25,7 +25,6 @@ defaults = {
     'company_text': "",
     'uploaded_text': "",
     'form_data': {},
-    'manual_input': {},
     'ai_filled': False,
     'company_parsed': False,
     'docs_parsed': False
@@ -57,8 +56,8 @@ for i, step_name in enumerate(steps):
 if current_step == "Choose Input Method":
     st.header("Step 1: Choose Input Method")
     st.session_state['input_option'] = st.radio(
-        "How would you like to provide company information?",
-        ("Paste Company URL", "Upload Supporting Documents", "Manual Form Input")
+        "Choose how to fill the form:",
+        ("Manual Form Input", "AI Auto-Fill (URL and/or PDF)")
     )
 
 # ----------------------------
@@ -71,16 +70,16 @@ elif current_step == "Provide Information":
     if not option:
         st.warning("Please select an input method before proceeding.")
     else:
-        if option == "Paste Company URL":
-            url = st.text_input("Paste Company Website URL")
+        if option == "AI Auto-Fill (URL and/or PDF)":
+            url = st.text_input("Paste Company Website URL (optional)")
+            files = st.file_uploader("Upload PDFs or Word Docs (optional)", type=["pdf", "docx"], accept_multiple_files=True)
+
             if url and not st.session_state['company_parsed']:
                 with st.spinner("Parsing website..."):
                     st.session_state['company_text'] = parse_website(url)
                     st.session_state['company_parsed'] = True
                     st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
 
-        elif option == "Upload Supporting Documents":
-            files = st.file_uploader("Upload PDFs or Word Docs", type=["pdf", "docx"], accept_multiple_files=True)
             if files and not st.session_state['docs_parsed']:
                 with st.spinner("Parsing uploaded files..."):
                     st.session_state['uploaded_text'] = parse_uploaded_docs(files)
@@ -88,7 +87,7 @@ elif current_step == "Provide Information":
                     st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
 
         elif option == "Manual Form Input":
-            st.info("Manual input selected. You will fill the form manually in the next step.")
+            st.info("You will fill the form manually in the next step.")
 
 # ----------------------------
 # Step 3 & 4: AI Pre-Fill & Review
@@ -97,57 +96,61 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
     option = st.session_state['input_option']
 
-    if option in ["Paste Company URL", "Upload Supporting Documents"]:
+    if option == "AI Auto-Fill (URL and/or PDF)":
         combined_text = ""
-        if option == "Paste Company URL":
-            combined_text += st.session_state.get('company_text', '')
-        if option == "Upload Supporting Documents":
-            combined_text += "\n" + st.session_state.get('uploaded_text', '')
+        if st.session_state.get('company_text'):
+            combined_text += st.session_state['company_text']
+        if st.session_state.get('uploaded_text'):
+            combined_text += "\n" + st.session_state['uploaded_text']
 
         if combined_text.strip() and not st.session_state['ai_filled']:
             if st.button("Auto-Fill Form with AI"):
                 with st.spinner("Generating AI suggestions..."):
-                    ai_output = fill_form_with_ai(combined_text)
-                    if ai_output:
-                        def safe(k): return ai_output.get(k, "")
-                        st.session_state['form_data'] = {
-                            "Company Information": {
-                                "company_name": safe("company_name"),
-                                "company_url": safe("company_url"),
-                                "founding_year": safe("founding_year"),
-                                "num_employees": safe("num_employees"),
-                                "hq_location": safe("hq_location")
-                            },
-                            "Partnership Details": {
-                                "partner_name": safe("partner_name"),
-                                "partnership_type": safe("partnership_type"),
-                                "partnership_start_date": safe("partnership_start_date"),
-                                "partnership_goals": safe("partnership_goals"),
-                                "expected_contributions": safe("expected_contributions")
-                            },
-                            "Product / Service Description": {
-                                "mission_statement": safe("mission_statement"),
-                                "product_overview": safe("product_overview"),
-                                "target_market": safe("target_market"),
-                                "competitive_advantage": safe("competitive_advantage")
-                            },
-                            "Legal & Financial Information": {
-                                "investment_amount": safe("investment_amount"),
-                                "contract_duration": safe("contract_duration"),
-                                "legal_clauses": safe("legal_clauses"),
-                                "risk_liability": safe("risk_liability")
-                            },
-                            "Miscellaneous / Notes": {
-                                "additional_notes": safe("additional_notes"),
-                                "contact_person": safe("contact_person"),
-                                "contact_email": safe("contact_email")
+                    try:
+                        ai_output = fill_form_with_ai(combined_text)
+                        if ai_output:
+                            def safe(k): return ai_output.get(k, "")
+                            st.session_state['form_data'] = {
+                                "Company Information": {
+                                    "company_name": safe("company_name"),
+                                    "company_url": safe("company_url"),
+                                    "founding_year": safe("founding_year"),
+                                    "num_employees": safe("num_employees"),
+                                    "hq_location": safe("hq_location")
+                                },
+                                "Partnership Details": {
+                                    "partner_name": safe("partner_name"),
+                                    "partnership_type": safe("partnership_type"),
+                                    "partnership_start_date": safe("partnership_start_date"),
+                                    "partnership_goals": safe("partnership_goals"),
+                                    "expected_contributions": safe("expected_contributions")
+                                },
+                                "Product / Service Description": {
+                                    "mission_statement": safe("mission_statement"),
+                                    "product_overview": safe("product_overview"),
+                                    "target_market": safe("target_market"),
+                                    "competitive_advantage": safe("competitive_advantage")
+                                },
+                                "Legal & Financial Information": {
+                                    "investment_amount": safe("investment_amount"),
+                                    "contract_duration": safe("contract_duration"),
+                                    "legal_clauses": safe("legal_clauses"),
+                                    "risk_liability": safe("risk_liability")
+                                },
+                                "Miscellaneous / Notes": {
+                                    "additional_notes": safe("additional_notes"),
+                                    "contact_person": safe("contact_person"),
+                                    "contact_email": safe("contact_email")
+                                }
                             }
-                        }
-                        st.session_state['ai_filled'] = True
-                        st.success("AI has populated the form!")
-                        st.experimental_rerun()
-                    else:
-                        st.warning("AI returned empty or invalid output.")
+                            st.session_state['ai_filled'] = True
+                            st.success("AI has populated the form!")
+                            st.rerun()
+                        else:
+                            st.warning("AI returned empty or invalid output.")
+                    except Exception as e:
+                        st.error(f"AI generation failed: {e}")
+
     elif option == "Manual Form Input":
         st.info("Manual input selected → skipping AI auto-fill.")
 
@@ -208,21 +211,9 @@ col1, col2 = st.columns([1, 1])
 with col1:
     if st.button("Back") and current_step_index > 0:
         st.session_state['current_step'] -= 1
-        st.experimental_rerun()
+        st.rerun()
 
 with col2:
     if st.button("Next") and current_step_index < len(steps)-1:
-        if current_step == "Choose Input Method" and not st.session_state['input_option']:
-            st.warning("Select an input method first.")
-        elif current_step == "Provide Information":
-            option = st.session_state['input_option']
-            if option == "Paste Company URL" and not st.session_state['company_text']:
-                st.warning("Provide a valid company URL.")
-            elif option == "Upload Supporting Documents" and not st.session_state['uploaded_text']:
-                st.warning("Upload at least one document.")
-            else:
-                st.session_state['current_step'] += 1
-                st.experimental_rerun()
-        else:
-            st.session_state['current_step'] += 1
-            st.experimental_rerun()
+        st.session_state['current_step'] += 1
+        st.rerun()
