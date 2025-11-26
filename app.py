@@ -3,7 +3,7 @@ import json
 import os
 import base64
 from company_parser import parse_website, parse_uploaded_docs
-from ai_fill import fill_form_with_ai
+from ai_fill import fill_form_with_ai  # local LLM
 from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
@@ -71,23 +71,21 @@ elif current_step == "Provide Information":
         url = st.text_input("Paste Company Website URL (optional)")
         files = st.file_uploader("Upload PDFs or Word Docs (optional)", type=["pdf", "docx"], accept_multiple_files=True)
 
+        # Parse website
         if url and not st.session_state['company_parsed']:
             with st.spinner("Parsing website..."):
                 st.session_state['company_text'] = parse_website(url)
                 st.session_state['company_parsed'] = True
-                if st.session_state['company_text'].strip():
-                    st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
-                else:
-                    st.warning("Website text is empty. Site may require JS rendering or is protected.")
+                word_count = len(st.session_state['company_text'].split())
+                st.success(f"Parsed {word_count} words from website.")
 
+        # Parse uploaded documents
         if files and not st.session_state['docs_parsed']:
             with st.spinner("Parsing uploaded files..."):
                 st.session_state['uploaded_text'] = parse_uploaded_docs(files)
                 st.session_state['docs_parsed'] = True
-                if st.session_state['uploaded_text'].strip():
-                    st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
-                else:
-                    st.warning("Uploaded files contained no readable text.")
+                word_count = len(st.session_state['uploaded_text'].split())
+                st.success(f"Parsed {word_count} words from documents.")
 
     elif option == "Manual Form Input":
         st.info("You will fill the form manually in the next step.")
@@ -99,24 +97,28 @@ elif current_step == "AI Pre-Fill & Review":
     st.header("Step 3: AI Pre-Fill & Review Form")
     option = st.session_state['input_option']
 
-    combined_text = (st.session_state.get('company_text','') + "\n" + st.session_state.get('uploaded_text','')).strip()
+    if option == "AI Auto-Fill (URL and/or PDF)":
+        if st.button("Auto-Fill Form with AI") and not st.session_state['ai_filled']:
+            combined_text = ""
+            if st.session_state.get('company_text'):
+                combined_text += st.session_state['company_text']
+            if st.session_state.get('uploaded_text'):
+                combined_text += "\n" + st.session_state['uploaded_text']
 
-    if option == "AI Auto-Fill (URL and/or PDF)" and not st.session_state['ai_filled']:
-        if st.button("Auto-Fill Form with AI"):
-            if not combined_text:
-                st.warning("No parsed content to send to AI.")
-            else:
-                with st.spinner("Generating AI suggestions..."):
-                    ai_output = fill_form_with_ai(combined_text)
-                    if ai_output:
+            if combined_text.strip():
+                with st.spinner("Generating AI suggestions locally..."):
+                    try:
+                        ai_output = fill_form_with_ai(combined_text)
                         st.session_state['form_data'] = ai_output
                         st.session_state['ai_filled'] = True
-                        st.success("AI has populated the form!")
+                        st.success("Form auto-filled based on available data!")
                         st.rerun()
-                    else:
-                        st.warning("AI returned empty or invalid output.")
+                    except Exception as e:
+                        st.error(f"Local AI generation failed: {e}")
+            else:
+                st.warning("No parsed data to send to AI.")
 
-    # Show editable form always
+    # Show editable form in all cases
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
