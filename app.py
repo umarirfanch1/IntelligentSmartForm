@@ -4,54 +4,50 @@ import os
 import base64
 from company_parser import parse_website, parse_uploaded_docs
 from pdf_generator import generate_pdf_from_form
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 
 # ----------------------------
-# Local LLM Auto-Fill Function
+# Local "LLM" Auto-fill Logic
 # ----------------------------
+import re
+
 def local_autofill(text):
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    output = {}
-
-    def search_keywords(keywords):
-        for line in lines:
-            for kw in keywords:
-                if kw.lower() in line.lower():
-                    return line
+    """
+    Simple regex-based local autofill. Fills fields if present in text, else marks as REQUIRED.
+    """
+    def find(patterns):
+        for pat in patterns:
+            match = re.search(pat, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
         return "REQUIRED"
 
-    # Section 1: Company Info
-    output['company_name'] = search_keywords(["company name", "about us"])
-    output['company_url'] = search_keywords(["http://", "https://"])
-    output['founding_year'] = search_keywords(["founded", "established", "incorporated"])
-    output['num_employees'] = search_keywords(["employee", "team size"])
-    output['hq_location'] = search_keywords(["headquarters", "located in", "office in"])
+    output = {
+        "company_name": find([r"Company Name[:\-]\s*(.+)"]),
+        "company_url": find([r"(https?://[^\s]+)"]),
+        "founding_year": find([r"Founded[:\-]\s*(\d{4})", r"Establish(ed|ment)[:\-]\s*(\d{4})"]),
+        "num_employees": find([r"Employees[:\-]\s*(\d+)"]),
+        "hq_location": find([r"(Headquarters|HQ)[:\-]\s*(.+)"]),
 
-    # Section 2: Partnership Details
-    output['partner_name'] = search_keywords(["partner", "collaboration"])
-    output['partnership_type'] = search_keywords(["partnership type", "type of partnership"])
-    output['partnership_start_date'] = search_keywords(["start date", "partnership begins"])
-    output['partnership_goals'] = search_keywords(["goal", "objective", "aim"])
-    output['expected_contributions'] = search_keywords(["contribution", "responsibility"])
+        "partner_name": find([r"Partner Name[:\-]\s*(.+)"]),
+        "partnership_type": find([r"Partnership Type[:\-]\s*(.+)"]),
+        "partnership_start_date": find([r"Start Date[:\-]\s*(.+)"]),
+        "partnership_goals": find([r"Goals[:\-]\s*(.+)"]),
+        "expected_contributions": find([r"Contribution[:\-]\s*(.+)"]),
 
-    # Section 3: Product / Service Description
-    output['mission_statement'] = search_keywords(["mission", "purpose"])
-    output['product_overview'] = search_keywords(["product", "service overview"])
-    output['target_market'] = search_keywords(["target market", "customer"])
-    output['competitive_advantage'] = search_keywords(["competitive advantage", "USP"])
+        "mission_statement": find([r"Mission[:\-]\s*(.+)"]),
+        "product_overview": find([r"Product[:\-]\s*(.+)"]),
+        "target_market": find([r"Market[:\-]\s*(.+)"]),
+        "competitive_advantage": find([r"(Competitive Advantage|USP)[:\-]\s*(.+)"]),
 
-    # Section 4: Legal & Financial
-    output['investment_amount'] = search_keywords(["investment", "funding"])
-    output['contract_duration'] = search_keywords(["contract duration", "term"])
-    output['legal_clauses'] = search_keywords(["legal", "clause"])
-    output['risk_liability'] = search_keywords(["risk", "liability"])
+        "investment_amount": find([r"Investment[:\-]\s*(.+)"]),
+        "contract_duration": find([r"Contract Duration[:\-]\s*(.+)"]),
+        "legal_clauses": find([r"Legal[:\-]\s*(.+)"]),
+        "risk_liability": find([r"Risk[:\-]\s*(.+)"]),
 
-    # Section 5: Misc / Notes
-    output['additional_notes'] = search_keywords(["note", "remark"])
-    output['contact_person'] = search_keywords(["contact person", "contact"])
-    output['contact_email'] = search_keywords(["@", "email"])
-
+        "additional_notes": find([r"Notes[:\-]\s*(.+)"]),
+        "contact_person": find([r"Contact Person[:\-]\s*(.+)"]),
+        "contact_email": find([r"([\w\.-]+@[\w\.-]+)"])
+    }
     return output
 
 # ----------------------------
@@ -63,7 +59,7 @@ st.markdown("<p style='text-align:center;color:#666;'>A prototype by Umar™</p>
 st.markdown("---")
 
 # ----------------------------
-# Initialize Session State
+# Initialize session state
 # ----------------------------
 defaults = {
     'current_step': 0,
@@ -127,7 +123,7 @@ elif current_step == "Provide Information":
             with st.spinner("Parsing uploaded files..."):
                 st.session_state['uploaded_text'] = parse_uploaded_docs(files)
                 st.session_state['docs_parsed'] = True
-                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from uploaded documents.")
+                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
 
     elif option == "Manual Form Input":
         st.info("You will fill the form manually in the next step.")
@@ -152,18 +148,18 @@ elif current_step == "Auto-Fill & Review":
             if combined_text:
                 with st.spinner("Auto-filling form..."):
                     ai_output = local_autofill(combined_text)
-                    # Map output to form
+                    # Map output to template
                     st.session_state['form_data'] = {}
                     for section_key, section in template.items():
                         st.session_state['form_data'][section_key] = {}
-                        for field_key in section['fields'].keys():
+                        for field_key in section['fields']:
                             st.session_state['form_data'][section_key][field_key] = ai_output.get(field_key, "REQUIRED")
                     st.session_state['ai_filled'] = True
                     st.success("Form auto-filled! Missing fields are marked as REQUIRED.")
             else:
                 st.warning("No data available to auto-fill.")
 
-    # Show editable form in all cases
+    # Show editable form
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
@@ -175,52 +171,40 @@ elif current_step == "Auto-Fill & Review":
                 )
 
 # ----------------------------
-# Step 4: PDF Preview & Send
-# ----------------------------
-# ----------------------------
-# Step 4: PDF Preview & Send
+# Step 4: Preview PDF & Download
 # ----------------------------
 elif current_step == "Preview PDF":
-    st.header("Step 4: Preview PDF & Send")
+    st.header("Step 4: Preview PDF & Download")
     if st.session_state['form_data']:
         pdf_path = "partnership_form_preview.pdf"
         with st.spinner("Generating PDF..."):
-            generate_pdf_from_form(st.session_state['form_data'], template, pdf_path)
-        st.success("PDF generated!")
+            success = generate_pdf_from_form(st.session_state['form_data'], template, pdf_path)
 
-        # Show PDF download button
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-        st.download_button(
-            label="Download PDF",
-            data=pdf_bytes,
-            file_name="partnership_form.pdf",
-            mime="application/pdf"
-        )
-
-        # Send via SendGrid
-        recipient = st.text_input("Recipient Email:", "reachingjust@gmail.com")
-        if st.button("Send PDF via SendGrid"):
-            try:
-                sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-                encoded = base64.b64encode(pdf_bytes).decode()
-
-                attachment = Attachment(
-                    file_content=FileContent(encoded),
-                    file_type=FileType("application/pdf"),
-                    file_name=FileName("partnership_form.pdf"),
-                    disposition=Disposition("attachment")
-                )
-                mail = Mail(
-                    from_email="reachingjust@gmail.com",
-                    to_emails=recipient,
-                    subject="Completed Partnership Form",
-                    plain_text_content="Please find the completed partnership form attached."
-                )
-                mail.attachment = attachment
-                resp = sg.send(mail)
-                st.success(f"PDF sent! Status code: {resp.status_code}")
-            except Exception as e:
-                st.error(f"Failed to send email: {e}")
+        if success and os.path.exists(pdf_path):
+            st.success("PDF generated successfully!")
+            with open(pdf_path, "rb") as f:
+                pdf_bytes = f.read()
+            st.download_button(
+                label="Download PDF",
+                data=pdf_bytes,
+                file_name="partnership_form.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.error("Failed to generate PDF. Check logs for details.")
     else:
-        st.warning("Form data is empty. Fill or generate form first.")
+        st.warning("Form data is empty. Fill or auto-fill form first.")
+
+# ----------------------------
+# Navigation Buttons
+# ----------------------------
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("Back") and current_step_index > 0:
+        st.session_state['current_step'] -= 1
+        st.rerun()
+
+with col2:
+    if st.button("Next") and current_step_index < len(steps)-1:
+        st.session_state['current_step'] += 1
+        st.rerun()
