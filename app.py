@@ -177,21 +177,33 @@ elif current_step == "Auto-Fill & Review":
 # ----------------------------
 # Step 4: PDF Preview & Send
 # ----------------------------
+# ----------------------------
+# Step 4: PDF Preview & Send
+# ----------------------------
 elif current_step == "Preview PDF":
     st.header("Step 4: Preview PDF & Send")
     if st.session_state['form_data']:
+        pdf_path = "partnership_form_preview.pdf"
         with st.spinner("Generating PDF..."):
-            generate_pdf_from_form(st.session_state['form_data'], template, "partnership_form_preview.pdf")
+            generate_pdf_from_form(st.session_state['form_data'], template, pdf_path)
         st.success("PDF generated!")
-        st.components.v1.iframe("partnership_form_preview.pdf", height=600)
 
+        # Show PDF download button
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes,
+            file_name="partnership_form.pdf",
+            mime="application/pdf"
+        )
+
+        # Send via SendGrid
         recipient = st.text_input("Recipient Email:", "reachingjust@gmail.com")
         if st.button("Send PDF via SendGrid"):
             try:
                 sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-                with open("partnership_form_preview.pdf", "rb") as f:
-                    data = f.read()
-                encoded = base64.b64encode(data).decode()
+                encoded = base64.b64encode(pdf_bytes).decode()
 
                 attachment = Attachment(
                     file_content=FileContent(encoded),
@@ -212,17 +224,3 @@ elif current_step == "Preview PDF":
                 st.error(f"Failed to send email: {e}")
     else:
         st.warning("Form data is empty. Fill or generate form first.")
-
-# ----------------------------
-# Navigation Buttons
-# ----------------------------
-col1, col2 = st.columns([1, 1])
-with col1:
-    if st.button("Back") and current_step_index > 0:
-        st.session_state['current_step'] -= 1
-        st.rerun()
-
-with col2:
-    if st.button("Next") and current_step_index < len(steps)-1:
-        st.session_state['current_step'] += 1
-        st.rerun()
