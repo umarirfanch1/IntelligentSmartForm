@@ -92,22 +92,21 @@ elif current_step == "Provide Information":
 
 # ----------------------------
 # Step 3 & 4: AI Pre-Fill & Review
+# ----------------------------
 elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
     st.header("Step 3 & 4: AI Pre-Fill & Review Form")
     option = st.session_state['input_option']
 
-    # Get only the relevant input based on chosen method
-    if option == "Paste Company URL":
-        combined_text = st.session_state.get('company_text', '')
-    elif option == "Upload Supporting Documents":
-        combined_text = st.session_state.get('uploaded_text', '')
-    else:
+    if option in ["Paste Company URL", "Upload Supporting Documents"]:
         combined_text = ""
+        if option == "Paste Company URL":
+            combined_text += st.session_state.get('company_text', '')
+        if option == "Upload Supporting Documents":
+            combined_text += "\n" + st.session_state.get('uploaded_text', '')
 
-    if combined_text.strip() and not st.session_state['ai_filled']:
-        if st.button("Auto-Fill Form with AI"):
-            with st.spinner("Generating AI suggestions..."):
-                try:
+        if combined_text.strip() and not st.session_state['ai_filled']:
+            if st.button("Auto-Fill Form with AI"):
+                with st.spinner("Generating AI suggestions..."):
                     ai_output = fill_form_with_ai(combined_text)
                     if ai_output:
                         def safe(k): return ai_output.get(k, "")
@@ -146,13 +145,23 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                         }
                         st.session_state['ai_filled'] = True
                         st.success("AI has populated the form!")
-                        st.rerun()
+                        st.experimental_rerun()
                     else:
-                        st.warning("AI returned empty output.")
-                except Exception as e:
-                    st.error(f"AI generation failed: {e}")
+                        st.warning("AI returned empty or invalid output.")
     elif option == "Manual Form Input":
         st.info("Manual input selected → skipping AI auto-fill.")
+
+    # Editable form UI
+    for section_key, section in template.items():
+        with st.expander(section['title'], expanded=True):
+            st.markdown(section.get('description', ''))
+            st.session_state['form_data'].setdefault(section_key, {})
+            for field_key, field_label in section['fields'].items():
+                prefill = st.session_state['form_data'][section_key].get(field_key, "")
+                st.session_state['form_data'][section_key][field_key] = st.text_area(
+                    field_label, value=prefill, height=60, key=f"{section_key}_{field_key}"
+                )
+
 # ----------------------------
 # Step 5: PDF Preview & Send
 # ----------------------------
