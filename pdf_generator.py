@@ -1,56 +1,29 @@
-import pdfkit
-from jinja2 import Template
+from fpdf import FPDF
 
-def generate_pdf_from_form(form_data, template_data, output_file="partnership_form.pdf"):
+def generate_pdf_from_form(form_data, template, output_path="partnership_form_preview.pdf"):
     """
-    Generates a PDF from the filled partnership form.
-    Returns True if successful, False otherwise.
+    Generate a simple PDF from form data.
+    Returns True if successful, else False.
     """
-    html_content = "<html><head><meta charset='utf-8'><style>"
-    html_content += """
-    body { font-family: Arial, sans-serif; margin: 30px; }
-    h1 { text-align: center; color: #2F4F4F; }
-    h2 { color: #4B0082; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-    p { margin: 5px 0; }
-    .field-label { font-weight: bold; }
-    .field-value { margin-left: 10px; }
-    """
-    html_content += "</style></head><body>"
-    html_content += "<h1>Partnership Form</h1>"
-
-    for section_key, section in template_data.items():
-        html_content += f"<h2>{section['title']}</h2>"
-        html_content += f"<p>{section.get('description','')}</p>"
-        for field_key, field_label in section['fields'].items():
-            value = form_data.get(section_key, {}).get(field_key, "")
-            html_content += f"<p><span class='field-label'>{field_label}</span>: <span class='field-value'>{value}</span></p>"
-
-    html_content += "</body></html>"
-
     try:
-        pdfkit.from_string(html_content, output_file)
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, "Partnership Form", ln=True, align="C")
+        pdf.ln(10)
+
+        pdf.set_font("Arial", "", 12)
+        for section_key, section in form_data.items():
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 8, section_key, ln=True)
+            pdf.set_font("Arial", "", 12)
+            for field_key, value in section.items():
+                pdf.multi_cell(0, 6, f"{field_key}: {value}")
+            pdf.ln(5)
+
+        pdf.output(output_path)
         return True
     except Exception as e:
         print(f"[ERROR] PDF generation failed: {e}")
         return False
-2️⃣ Check if PDF was generated before opening
-Update Step 4 in app.py:
-
-python
-Copy code
-pdf_path = "partnership_form_preview.pdf"
-with st.spinner("Generating PDF..."):
-    success = generate_pdf_from_form(st.session_state['form_data'], template, pdf_path)
-
-if success and os.path.exists(pdf_path):
-    st.success("PDF generated!")
-    with open(pdf_path, "rb") as f:
-        pdf_bytes = f.read()
-    st.download_button(
-        label="Download PDF",
-        data=pdf_bytes,
-        file_name="partnership_form.pdf",
-        mime="application/pdf"
-    )
-else:
-    st.error("Failed to generate PDF. Check logs for details.")
