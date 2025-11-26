@@ -141,14 +141,14 @@ elif current_step == "Provide Information":
 
     elif option == "Manual Form Input":
         st.info("You will fill the form manually in the next step.")
-
 # ----------------------------
-# Step 3: AI Pre-Fill & Review Form
+# Step 3: Auto-Fill & Review Form
 # ----------------------------
 elif current_step == "AI Pre-Fill & Review":
     st.header("Step 3: Auto-Fill & Review Form")
     option = st.session_state['input_option']
 
+    # Combine website and uploaded text
     combined_text = ""
     if st.session_state.get('company_text'):
         combined_text += st.session_state['company_text'].strip()
@@ -157,11 +157,52 @@ elif current_step == "AI Pre-Fill & Review":
             combined_text += "\n\n"
         combined_text += st.session_state['uploaded_text'].strip()
 
+    # Define a safe regex find function
+    import re
+
+    def find(patterns, text):
+        for p in patterns:
+            match = re.search(p, text, re.IGNORECASE)
+            if match:
+                try:
+                    return match.group(1).strip()
+                except IndexError:
+                    return match.group(0).strip()
+        return "REQUIRED"
+
+    # Local auto-fill function
+    def local_autofill(text):
+        output = {}
+        output['company_name'] = find([r"Company Name[:\s]+(.+)"], text)
+        output['company_url'] = find([r"https?://[^\s]+"], text)
+        output['founding_year'] = find([r"Founded[:\s]+(\d{4})", r"Est\.[:\s]+(\d{4})"], text)
+        output['num_employees'] = find([r"(\d{1,5}) employees"], text)
+        output['hq_location'] = find([r"Headquarters[:\s]+(.+)"], text)
+        output['partner_name'] = find([r"Partner[:\s]+(.+)"], text)
+        output['partnership_type'] = find([r"Partnership Type[:\s]+(.+)"], text)
+        output['partnership_start_date'] = find([r"Start Date[:\s]+(.+)"], text)
+        output['partnership_goals'] = find([r"Goals[:\s]+(.+)"], text)
+        output['expected_contributions'] = find([r"Contribution[:\s]+(.+)"], text)
+        output['mission_statement'] = find([r"Mission[:\s]+(.+)"], text)
+        output['product_overview'] = find([r"Product[:\s]+(.+)"], text)
+        output['target_market'] = find([r"Target Market[:\s]+(.+)"], text)
+        output['competitive_advantage'] = find([r"Competitive Advantage[:\s]+(.+)"], text)
+        output['investment_amount'] = find([r"Investment[:\s]+(.+)"], text)
+        output['contract_duration'] = find([r"Contract Duration[:\s]+(.+)"], text)
+        output['legal_clauses'] = find([r"Legal[:\s]+(.+)"], text)
+        output['risk_liability'] = find([r"Risk[:\s]+(.+)"], text)
+        output['additional_notes'] = find([r"Notes[:\s]+(.+)"], text)
+        output['contact_person'] = find([r"Contact[:\s]+(.+)"], text)
+        output['contact_email'] = find([r"([\w\.-]+@[\w\.-]+)"], text)
+        return output
+
     if option == "AI Auto-Fill (URL and/or PDF)":
         if st.button("Auto-Fill Form") and not st.session_state['ai_filled']:
             if combined_text:
                 with st.spinner("Auto-filling form..."):
                     ai_output = local_autofill(combined_text)
+
+                    # Fill form_data session
                     st.session_state['form_data'] = {
                         "Company Information": {
                             "company_name": ai_output["company_name"],
