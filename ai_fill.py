@@ -3,20 +3,6 @@ import json
 import requests
 import streamlit as st
 def fill_form_with_ai(combined_text: str) -> dict:
-
-st.write("Sending to Groq API:")
-st.write(combined_text[:500], "...")  # show first 500 chars
-
-resp = requests.post(
-    "https://api.groq.com/openai/v1/chat/completions",
-    headers={
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    },
-    json=payload
-)
-st.write("Groq API status:", resp.status_code)
-st.write("Groq API raw response:", resp.text[:1000], "...")
     """
     Send combined text to Groq API and return structured JSON for the form.
     Args:
