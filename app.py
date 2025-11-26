@@ -6,7 +6,53 @@ from company_parser import parse_website, parse_uploaded_docs
 from pdf_generator import generate_pdf_from_form
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
-import re
+
+# ----------------------------
+# Local LLM Auto-Fill Function
+# ----------------------------
+def local_autofill(text):
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    output = {}
+
+    def search_keywords(keywords):
+        for line in lines:
+            for kw in keywords:
+                if kw.lower() in line.lower():
+                    return line
+        return "REQUIRED"
+
+    # Section 1: Company Info
+    output['company_name'] = search_keywords(["company name", "about us"])
+    output['company_url'] = search_keywords(["http://", "https://"])
+    output['founding_year'] = search_keywords(["founded", "established", "incorporated"])
+    output['num_employees'] = search_keywords(["employee", "team size"])
+    output['hq_location'] = search_keywords(["headquarters", "located in", "office in"])
+
+    # Section 2: Partnership Details
+    output['partner_name'] = search_keywords(["partner", "collaboration"])
+    output['partnership_type'] = search_keywords(["partnership type", "type of partnership"])
+    output['partnership_start_date'] = search_keywords(["start date", "partnership begins"])
+    output['partnership_goals'] = search_keywords(["goal", "objective", "aim"])
+    output['expected_contributions'] = search_keywords(["contribution", "responsibility"])
+
+    # Section 3: Product / Service Description
+    output['mission_statement'] = search_keywords(["mission", "purpose"])
+    output['product_overview'] = search_keywords(["product", "service overview"])
+    output['target_market'] = search_keywords(["target market", "customer"])
+    output['competitive_advantage'] = search_keywords(["competitive advantage", "USP"])
+
+    # Section 4: Legal & Financial
+    output['investment_amount'] = search_keywords(["investment", "funding"])
+    output['contract_duration'] = search_keywords(["contract duration", "term"])
+    output['legal_clauses'] = search_keywords(["legal", "clause"])
+    output['risk_liability'] = search_keywords(["risk", "liability"])
+
+    # Section 5: Misc / Notes
+    output['additional_notes'] = search_keywords(["note", "remark"])
+    output['contact_person'] = search_keywords(["contact person", "contact"])
+    output['contact_email'] = search_keywords(["@", "email"])
+
+    return output
 
 # ----------------------------
 # Streamlit Page Setup
@@ -17,7 +63,7 @@ st.markdown("<p style='text-align:center;color:#666;'>A prototype by Umar™</p>
 st.markdown("---")
 
 # ----------------------------
-# Initialize session state
+# Initialize Session State
 # ----------------------------
 defaults = {
     'current_step': 0,
@@ -39,7 +85,7 @@ for key, val in defaults.items():
 with open("partnership_template.json", "r") as f:
     template = json.load(f)
 
-steps = ["Choose Input Method", "Provide Information", "AI Pre-Fill & Review", "Preview PDF"]
+steps = ["Choose Input Method", "Provide Information", "Auto-Fill & Review", "Preview PDF"]
 current_step_index = st.session_state['current_step']
 current_step = steps[current_step_index]
 
@@ -49,62 +95,6 @@ current_step = steps[current_step_index]
 st.sidebar.header("Steps")
 for i, step_name in enumerate(steps):
     st.sidebar.markdown(f"{'✅' if i < current_step_index else '➡️' if i == current_step_index else '❌'} {step_name}")
-
-# ----------------------------
-# Local LLM-style autofill
-# ----------------------------
-def local_autofill(combined_text: str):
-    """
-    Auto-fill the partnership form from combined text.
-    Uses simple pattern matching and keyword search.
-    Fields not found are left blank or marked as 'REQUIRED'.
-    """
-    output = {}
-    
-    def find(patterns):
-        for p in patterns:
-            match = re.search(p, combined_text, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
-        return ""  # return empty if not found
-
-    # Section 1: Company Information
-    output['company_name'] = find([r"company name[:\-\s]+(.+)", r"name of the company[:\-\s]+(.+)"])
-    output['company_url'] = find([r"(https?://[^\s]+)"])
-    output['founding_year'] = find([r"founded in (\d{4})", r"established in (\d{4})"])
-    output['num_employees'] = find([r"(\d+) employees", r"staff[:\-\s]+(\d+)"])
-    output['hq_location'] = find([r"headquarters[:\-\s]+(.+)", r"based in[:\-\s]+(.+)"])
-
-    # Section 2: Partnership Details
-    output['partner_name'] = find([r"partner name[:\-\s]+(.+)"])
-    output['partnership_type'] = find([r"type of partnership[:\-\s]+(.+)"])
-    output['partnership_start_date'] = find([r"start date[:\-\s]+(.+)"])
-    output['partnership_goals'] = find([r"goals[:\-\s]+(.+)"])
-    output['expected_contributions'] = find([r"contributions[:\-\s]+(.+)"])
-
-    # Section 3: Product / Service Description
-    output['mission_statement'] = find([r"mission statement[:\-\s]+(.+)"])
-    output['product_overview'] = find([r"product overview[:\-\s]+(.+)"])
-    output['target_market'] = find([r"target market[:\-\s]+(.+)"])
-    output['competitive_advantage'] = find([r"competitive advantage[:\-\s]+(.+)"])
-
-    # Section 4: Legal & Financial Information
-    output['investment_amount'] = find([r"investment amount[:\-\s]+(.+)"])
-    output['contract_duration'] = find([r"contract duration[:\-\s]+(.+)"])
-    output['legal_clauses'] = find([r"legal clauses[:\-\s]+(.+)"])
-    output['risk_liability'] = find([r"risk[:\-\s]+(.+)"])
-
-    # Section 5: Miscellaneous / Notes
-    output['additional_notes'] = find([r"additional notes[:\-\s]+(.+)"])
-    output['contact_person'] = find([r"contact person[:\-\s]+(.+)"])
-    output['contact_email'] = find([r"[\w\.-]+@[\w\.-]+"])
-
-    # Mark missing fields as REQUIRED
-    for k, v in output.items():
-        if not v:
-            output[k] = "REQUIRED"
-
-    return output
 
 # ----------------------------
 # Step 1: Choose Input Method
@@ -137,18 +127,18 @@ elif current_step == "Provide Information":
             with st.spinner("Parsing uploaded files..."):
                 st.session_state['uploaded_text'] = parse_uploaded_docs(files)
                 st.session_state['docs_parsed'] = True
-                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
+                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from uploaded documents.")
 
     elif option == "Manual Form Input":
         st.info("You will fill the form manually in the next step.")
+
 # ----------------------------
 # Step 3: Auto-Fill & Review Form
 # ----------------------------
-elif current_step == "AI Pre-Fill & Review":
+elif current_step == "Auto-Fill & Review":
     st.header("Step 3: Auto-Fill & Review Form")
     option = st.session_state['input_option']
 
-    # Combine website and uploaded text
     combined_text = ""
     if st.session_state.get('company_text'):
         combined_text += st.session_state['company_text'].strip()
@@ -157,85 +147,17 @@ elif current_step == "AI Pre-Fill & Review":
             combined_text += "\n\n"
         combined_text += st.session_state['uploaded_text'].strip()
 
-    # Define a safe regex find function
-    import re
-
-    def find(patterns, text):
-        for p in patterns:
-            match = re.search(p, text, re.IGNORECASE)
-            if match:
-                try:
-                    return match.group(1).strip()
-                except IndexError:
-                    return match.group(0).strip()
-        return "REQUIRED"
-
-    # Local auto-fill function
-    def local_autofill(text):
-        output = {}
-        output['company_name'] = find([r"Company Name[:\s]+(.+)"], text)
-        output['company_url'] = find([r"https?://[^\s]+"], text)
-        output['founding_year'] = find([r"Founded[:\s]+(\d{4})", r"Est\.[:\s]+(\d{4})"], text)
-        output['num_employees'] = find([r"(\d{1,5}) employees"], text)
-        output['hq_location'] = find([r"Headquarters[:\s]+(.+)"], text)
-        output['partner_name'] = find([r"Partner[:\s]+(.+)"], text)
-        output['partnership_type'] = find([r"Partnership Type[:\s]+(.+)"], text)
-        output['partnership_start_date'] = find([r"Start Date[:\s]+(.+)"], text)
-        output['partnership_goals'] = find([r"Goals[:\s]+(.+)"], text)
-        output['expected_contributions'] = find([r"Contribution[:\s]+(.+)"], text)
-        output['mission_statement'] = find([r"Mission[:\s]+(.+)"], text)
-        output['product_overview'] = find([r"Product[:\s]+(.+)"], text)
-        output['target_market'] = find([r"Target Market[:\s]+(.+)"], text)
-        output['competitive_advantage'] = find([r"Competitive Advantage[:\s]+(.+)"], text)
-        output['investment_amount'] = find([r"Investment[:\s]+(.+)"], text)
-        output['contract_duration'] = find([r"Contract Duration[:\s]+(.+)"], text)
-        output['legal_clauses'] = find([r"Legal[:\s]+(.+)"], text)
-        output['risk_liability'] = find([r"Risk[:\s]+(.+)"], text)
-        output['additional_notes'] = find([r"Notes[:\s]+(.+)"], text)
-        output['contact_person'] = find([r"Contact[:\s]+(.+)"], text)
-        output['contact_email'] = find([r"([\w\.-]+@[\w\.-]+)"], text)
-        return output
-
     if option == "AI Auto-Fill (URL and/or PDF)":
         if st.button("Auto-Fill Form") and not st.session_state['ai_filled']:
             if combined_text:
                 with st.spinner("Auto-filling form..."):
                     ai_output = local_autofill(combined_text)
-
-                    # Fill form_data session
-                    st.session_state['form_data'] = {
-                        "Company Information": {
-                            "company_name": ai_output["company_name"],
-                            "company_url": ai_output["company_url"],
-                            "founding_year": ai_output["founding_year"],
-                            "num_employees": ai_output["num_employees"],
-                            "hq_location": ai_output["hq_location"]
-                        },
-                        "Partnership Details": {
-                            "partner_name": ai_output["partner_name"],
-                            "partnership_type": ai_output["partnership_type"],
-                            "partnership_start_date": ai_output["partnership_start_date"],
-                            "partnership_goals": ai_output["partnership_goals"],
-                            "expected_contributions": ai_output["expected_contributions"]
-                        },
-                        "Product / Service Description": {
-                            "mission_statement": ai_output["mission_statement"],
-                            "product_overview": ai_output["product_overview"],
-                            "target_market": ai_output["target_market"],
-                            "competitive_advantage": ai_output["competitive_advantage"]
-                        },
-                        "Legal & Financial Information": {
-                            "investment_amount": ai_output["investment_amount"],
-                            "contract_duration": ai_output["contract_duration"],
-                            "legal_clauses": ai_output["legal_clauses"],
-                            "risk_liability": ai_output["risk_liability"]
-                        },
-                        "Miscellaneous / Notes": {
-                            "additional_notes": ai_output["additional_notes"],
-                            "contact_person": ai_output["contact_person"],
-                            "contact_email": ai_output["contact_email"]
-                        }
-                    }
+                    # Map output to form
+                    st.session_state['form_data'] = {}
+                    for section_key, section in template.items():
+                        st.session_state['form_data'][section_key] = {}
+                        for field_key in section['fields'].keys():
+                            st.session_state['form_data'][section_key][field_key] = ai_output.get(field_key, "REQUIRED")
                     st.session_state['ai_filled'] = True
                     st.success("Form auto-filled! Missing fields are marked as REQUIRED.")
             else:
