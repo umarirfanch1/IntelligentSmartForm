@@ -39,7 +39,7 @@ for key, val in defaults.items():
 with open("partnership_template.json", "r") as f:
     template = json.load(f)
 
-steps = ["Choose Input Method", "Provide Information", "AI Pre-Fill & Review", "Edit Form", "Preview PDF"]
+steps = ["Choose Input Method", "Provide Information", "AI Pre-Fill & Review", "Preview PDF"]
 current_step_index = st.session_state['current_step']
 current_step = steps[current_step_index]
 
@@ -67,44 +67,41 @@ elif current_step == "Provide Information":
     st.header("Step 2: Provide Information")
     option = st.session_state['input_option']
 
-    if not option:
-        st.warning("Please select an input method before proceeding.")
-    else:
-        if option == "AI Auto-Fill (URL and/or PDF)":
-            url = st.text_input("Paste Company Website URL (optional)")
-            files = st.file_uploader("Upload PDFs or Word Docs (optional)", type=["pdf", "docx"], accept_multiple_files=True)
+    if option == "AI Auto-Fill (URL and/or PDF)":
+        url = st.text_input("Paste Company Website URL (optional)")
+        files = st.file_uploader("Upload PDFs or Word Docs (optional)", type=["pdf", "docx"], accept_multiple_files=True)
 
-            if url and not st.session_state['company_parsed']:
-                with st.spinner("Parsing website..."):
-                    st.session_state['company_text'] = parse_website(url)
-                    st.session_state['company_parsed'] = True
-                    st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
+        if url and not st.session_state['company_parsed']:
+            with st.spinner("Parsing website..."):
+                st.session_state['company_text'] = parse_website(url)
+                st.session_state['company_parsed'] = True
+                st.success(f"Parsed {len(st.session_state['company_text'].split())} words from website.")
 
-            if files and not st.session_state['docs_parsed']:
-                with st.spinner("Parsing uploaded files..."):
-                    st.session_state['uploaded_text'] = parse_uploaded_docs(files)
-                    st.session_state['docs_parsed'] = True
-                    st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
+        if files and not st.session_state['docs_parsed']:
+            with st.spinner("Parsing uploaded files..."):
+                st.session_state['uploaded_text'] = parse_uploaded_docs(files)
+                st.session_state['docs_parsed'] = True
+                st.success(f"Parsed {len(st.session_state['uploaded_text'].split())} words from documents.")
 
-        elif option == "Manual Form Input":
-            st.info("You will fill the form manually in the next step.")
+    elif option == "Manual Form Input":
+        st.info("You will fill the form manually in the next step.")
 
 # ----------------------------
-# Step 3 & 4: AI Pre-Fill & Review
+# Step 3: AI Pre-Fill & Review Form
 # ----------------------------
-elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
-    st.header("Step 3 & 4: AI Pre-Fill & Review Form")
+elif current_step == "AI Pre-Fill & Review":
+    st.header("Step 3: AI Pre-Fill & Review Form")
     option = st.session_state['input_option']
 
     if option == "AI Auto-Fill (URL and/or PDF)":
-        combined_text = ""
-        if st.session_state.get('company_text'):
-            combined_text += st.session_state['company_text']
-        if st.session_state.get('uploaded_text'):
-            combined_text += "\n" + st.session_state['uploaded_text']
+        if st.button("Auto-Fill Form with AI") and not st.session_state['ai_filled']:
+            combined_text = ""
+            if st.session_state.get('company_text'):
+                combined_text += st.session_state['company_text']
+            if st.session_state.get('uploaded_text'):
+                combined_text += "\n" + st.session_state['uploaded_text']
 
-        if combined_text.strip() and not st.session_state['ai_filled']:
-            if st.button("Auto-Fill Form with AI"):
+            if combined_text.strip():
                 with st.spinner("Generating AI suggestions..."):
                     try:
                         ai_output = fill_form_with_ai(combined_text)
@@ -150,11 +147,10 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                             st.warning("AI returned empty or invalid output.")
                     except Exception as e:
                         st.error(f"AI generation failed: {e}")
+            else:
+                st.warning("No parsed data to send to AI.")
 
-    elif option == "Manual Form Input":
-        st.info("Manual input selected → skipping AI auto-fill.")
-
-    # Editable form UI
+    # Show editable form in all cases
     for section_key, section in template.items():
         with st.expander(section['title'], expanded=True):
             st.markdown(section.get('description', ''))
@@ -166,10 +162,10 @@ elif current_step in ["AI Pre-Fill & Review", "Edit Form"]:
                 )
 
 # ----------------------------
-# Step 5: PDF Preview & Send
+# Step 4: PDF Preview & Send
 # ----------------------------
 elif current_step == "Preview PDF":
-    st.header("Step 5: Preview PDF & Send")
+    st.header("Step 4: Preview PDF & Send")
     if st.session_state['form_data']:
         with st.spinner("Generating PDF..."):
             generate_pdf_from_form(st.session_state['form_data'], template, "partnership_form_preview.pdf")
